@@ -73,7 +73,7 @@ def create_pdf(title, translation_text, passport_dict):
     return buffer.getvalue()
 
 # Sidebar: Settings & API Key
-selected_model = "gemini-1.5-flash"
+selected_model = "gemini-3.6-flash"
 
 with st.sidebar:
     st.header("⚙️ Sozlamalar")
@@ -84,18 +84,32 @@ with st.sidebar:
     )
     st.markdown("💡 [Bepul API Kalit Olish (Google AI Studio)](https://aistudio.google.com/app/apikey)")
     
-    # Auto-discover models when API key is provided
+    # Model Selector
+    model_options = [
+        "gemini-3.6-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-3.1-pro"
+    ]
+    
     if api_key.strip():
         try:
             genai.configure(api_key=api_key.strip())
-            raw_models = [m.name.replace("models/", "") for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-            if raw_models:
-                # Prioritize flash models
-                flash_first = [m for m in raw_models if "flash" in m] + [m for m in raw_models if "flash" not in m]
-                selected_model = st.selectbox("🤖 Foydalaniladigan AI Modeli:", flash_first, index=0)
-                st.success(f"Ulandi: `{selected_model}`")
-        except Exception as key_err:
-            st.error(f"API kalitni tekshirishda xatolik: {key_err}")
+            fetched_models = [m.name.replace("models/", "") for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            if fetched_models:
+                # Merge and keep unique
+                for fm in fetched_models:
+                    if fm not in model_options:
+                        model_options.append(fm)
+        except Exception:
+            pass
+
+    selected_model = st.selectbox(
+        "🤖 AI Modeli (Google tavsiya etgan):",
+        model_options,
+        index=0,
+        help="Google API hozirda gemini-3.6-flash modelini tavsiya qiladi"
+    )
 
     st.divider()
     st.markdown("### 📋 Platforma Imkoniyatlari")
@@ -211,8 +225,6 @@ Qoidalar:
             except Exception as err:
                 err_msg = str(err)
                 st.error(f"Xatolik yuz berdi: {err_msg}")
-                if "429" in err_msg or "quota" in err_msg.lower():
-                    st.info("💡 **Tavsiya:** Ushbu API kalit ulangan loyihada bepul limit tugagan yoki 0 bo'lishi mumkin. Iltimos, [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) sahifasiga kirib, **'Create API key in NEW project'** tugmasi orqali yangi bepul kalit yarating.")
 
 # Results Display and Export
 if "result_data" in st.session_state:
