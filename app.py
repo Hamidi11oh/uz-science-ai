@@ -80,7 +80,7 @@ with st.sidebar:
         type="password",
         help="aistudio.google.com saytidan olingan bepul kalit"
     )
-    st.markdown("💡 [Bepul API Kalit Olish (Google AI Studio)](https://aistudio.google.com/)")
+    st.markdown("💡 [Bepul API Kalit Olish (Google AI Studio)](https://aistudio.google.com/app/apikey)")
     
     st.divider()
     st.markdown("### 📋 Platforma Imkoniyatlari")
@@ -154,21 +154,6 @@ if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_widt
         with st.spinner("Google Gemini AI maqolani tahlil qilmoqda va akademik o'zbek tiliga o'girmoqda..."):
             try:
                 genai.configure(api_key=api_key)
-                
-                # Dynamic model discovery to guarantee zero model name errors
-                model_name = "gemini-1.5-flash"
-                try:
-                    models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                    preferred = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-pro"]
-                    for pref in preferred:
-                        match = [m for m in models if pref in m]
-                        if match:
-                            model_name = match[0]
-                            break
-                except Exception:
-                    pass
-
-                model = genai.GenerativeModel(model_name)
 
                 system_prompt = """
 Siz oliy toifali akademik tarjimon va magistr ilmiy maslahatchisisiz.
@@ -191,10 +176,33 @@ Qoidalar:
   }
 }
 """
-                response = model.generate_content(
-                    system_prompt + "\n\nHujjat Matni:\n" + extracted_text[:25000],
-                    generation_config={"temperature": 0.2}
-                )
+                # Free-tier prioritized models: Flash models are 100% free with unlimited quota
+                free_tier_models = [
+                    "gemini-1.5-flash",
+                    "gemini-1.5-flash-latest",
+                    "gemini-2.0-flash",
+                    "gemini-1.5-flash-8b",
+                    "gemini-2.0-flash-exp"
+                ]
+
+                response = None
+                last_error = None
+
+                for model_candidate in free_tier_models:
+                    try:
+                        m = genai.GenerativeModel(model_candidate)
+                        response = m.generate_content(
+                            system_prompt + "\n\nHujjat Matni:\n" + extracted_text[:25000],
+                            generation_config={"temperature": 0.2}
+                        )
+                        if response and response.text:
+                            break
+                    except Exception as m_err:
+                        last_error = m_err
+                        continue
+
+                if response is None or not response.text:
+                    raise Exception(f"Barcha bepul Flash modellari sinab ko'rildi, oxirgi xato: {last_error}")
 
                 raw_json = response.text.strip()
                 if raw_json.startswith("```json"):
