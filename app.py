@@ -38,7 +38,7 @@ def create_pdf(title, translation_text, passport_dict):
     body_style = ParagraphStyle('Body', parent=styles['Normal'], fontSize=9.5, leading=14, textColor='#334155', spaceAfter=4)
     
     story = []
-    clean_title = title.replace('<', '&lt;').replace('>', '&gt;')
+    clean_title = str(title).replace('<', '&lt;').replace('>', '&gt;')
     story.append(Paragraph(f"<b>UZ SCIENCE AI — {clean_title}</b>", title_style))
     story.append(Spacer(1, 8))
     
@@ -73,15 +73,30 @@ def create_pdf(title, translation_text, passport_dict):
     return buffer.getvalue()
 
 # Sidebar: Settings & API Key
+selected_model = "gemini-1.5-flash"
+
 with st.sidebar:
     st.header("⚙️ Sozlamalar")
     api_key = st.text_input(
         "Google Gemini API Kalit:",
         type="password",
-        help="aistudio.google.com saytidan olingan bepul kalit"
+        help="aistudio.google.com saytidan olingan kalit"
     )
     st.markdown("💡 [Bepul API Kalit Olish (Google AI Studio)](https://aistudio.google.com/app/apikey)")
     
+    # Auto-discover models when API key is provided
+    if api_key.strip():
+        try:
+            genai.configure(api_key=api_key.strip())
+            raw_models = [m.name.replace("models/", "") for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            if raw_models:
+                # Prioritize flash models
+                flash_first = [m for m in raw_models if "flash" in m] + [m for m in raw_models if "flash" not in m]
+                selected_model = st.selectbox("🤖 Foydalaniladigan AI Modeli:", flash_first, index=0)
+                st.success(f"Ulandi: `{selected_model}`")
+        except Exception as key_err:
+            st.error(f"API kalitni tekshirishda xatolik: {key_err}")
+
     st.divider()
     st.markdown("### 📋 Platforma Imkoniyatlari")
     st.markdown("✔️ **Formatlar:** PDF, PPTX (taqdimot), DOCX, TXT")
@@ -151,9 +166,10 @@ if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_widt
     elif not api_key.strip():
         st.error("⚠️ Iltimos, chap tarafdagi menyuga Gemini API kalitingizni kiriting.")
     else:
-        with st.spinner("Google Gemini AI maqolani tahlil qilmoqda va akademik o'zbek tiliga o'girmoqda..."):
+        with st.spinner(f"Google Gemini ({selected_model}) maqolani tahlil qilmoqda va o'zbek tiliga o'girmoqda..."):
             try:
-                genai.configure(api_key=api_key)
+                genai.configure(api_key=api_key.strip())
+                model = genai.GenerativeModel(selected_model)
 
                 system_prompt = """
 Siz oliy toifali akademik tarjimon va magistr ilmiy maslahatchisisiz.
@@ -176,33 +192,10 @@ Qoidalar:
   }
 }
 """
-                # Free-tier prioritized models: Flash models are 100% free with unlimited quota
-                free_tier_models = [
-                    "gemini-1.5-flash",
-                    "gemini-1.5-flash-latest",
-                    "gemini-2.0-flash",
-                    "gemini-1.5-flash-8b",
-                    "gemini-2.0-flash-exp"
-                ]
-
-                response = None
-                last_error = None
-
-                for model_candidate in free_tier_models:
-                    try:
-                        m = genai.GenerativeModel(model_candidate)
-                        response = m.generate_content(
-                            system_prompt + "\n\nHujjat Matni:\n" + extracted_text[:25000],
-                            generation_config={"temperature": 0.2}
-                        )
-                        if response and response.text:
-                            break
-                    except Exception as m_err:
-                        last_error = m_err
-                        continue
-
-                if response is None or not response.text:
-                    raise Exception(f"Barcha bepul Flash modellari sinab ko'rildi, oxirgi xato: {last_error}")
+                response = model.generate_content(
+                    system_prompt + "\n\nHujjat Matni:\n" + extracted_text[:25000],
+                    generation_config={"temperature": 0.2}
+                )
 
                 raw_json = response.text.strip()
                 if raw_json.startswith("```json"):
@@ -216,7 +209,10 @@ Qoidalar:
                 st.success("✅ Tarjima va ilmiy tahlil muvaffaqiyatli yakunlandi!")
 
             except Exception as err:
-                st.error(f"Xatolik yuz berdi: {err}")
+                err_msg = str(err)
+                st.error(f"Xatolik yuz berdi: {err_msg}")
+                if "429" in err_msg or "quota" in err_msg.lower():
+                    st.info("💡 **Tavsiya:** Ushbu API kalit ulangan loyihada bepul limit tugagan yoki 0 bo'lishi mumkin. Iltimos, [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) sahifasiga kirib, **'Create API key in NEW project'** tugmasi orqali yangi bepul kalit yarating.")
 
 # Results Display and Export
 if "result_data" in st.session_state:
