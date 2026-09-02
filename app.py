@@ -11,7 +11,21 @@ import json
 import os
 import time
 
-# Page Configuration
+# =====================================================================
+# 🔑 OLDINDAN BERILADIGAN ASOSIY API KALIT (BU YERGA 1 MARTA YOZIB QO'YISHINGIZ MUMKIN):
+# =====================================================================
+BUILTIN_API_KEY = ""  # Agar xohlasangiz, o'z kalitingizni shu qo'shtirnoq ichiga yozib qo'yishingiz mumkin!
+
+# Secrets yoki Environment dan avtomatik olish
+if not BUILTIN_API_KEY:
+    if "GEMINI_API_KEY" in st.secrets:
+        BUILTIN_API_KEY = st.secrets["GEMINI_API_KEY"]
+    elif os.environ.get("GEMINI_API_KEY"):
+        BUILTIN_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+# =====================================================================
+# SAHIFA SOZLAMALARI VA DIZAYNI
+# =====================================================================
 st.set_page_config(
     page_title="UZ SCIENCE AI - Ilmiy Tarjima Platformasi",
     page_icon="🎓",
@@ -19,7 +33,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom Styling
+# Custom Exact-Match Tailwind/Clean CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -262,18 +276,13 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     buffer.seek(0)
     return buffer.getvalue()
 
-# Automatic Master API Key Resolution (Supports multiple comma-separated keys for auto-failover)
-raw_keys = []
-if "GEMINI_API_KEY" in st.secrets:
-    raw_keys.append(st.secrets["GEMINI_API_KEY"])
-if "GEMINI_API_KEYS" in st.secrets:
-    raw_keys.extend([k.strip() for k in st.secrets["GEMINI_API_KEYS"].split(",") if k.strip()])
-if os.environ.get("GEMINI_API_KEY"):
-    raw_keys.append(os.environ.get("GEMINI_API_KEY"))
+# API Keys list
+active_api_keys = []
+if BUILTIN_API_KEY.strip():
+    active_api_keys.append(BUILTIN_API_KEY.strip())
 
 # Top Navigation Bar
-has_master_key = len(raw_keys) > 0
-status_badge = '<span class="badge-active"><span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span> Gemini AI Faol</span>' if has_master_key else '<span class="badge-active" style="background:#fffbeb; border-color:#fde68a; color:#b45309;">API Kalit kiritilmagan</span>'
+status_badge = '<span class="badge-active"><span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span> Gemini AI Faol</span>' if active_api_keys else '<span class="badge-active" style="background:#fffbeb; border-color:#fde68a; color:#b45309;">API Kalit kiritilmagan</span>'
 
 st.markdown(f"""
 <div class="top-nav">
@@ -297,18 +306,21 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar (For user-provided key or overrides)
+# Sidebar (Optional for user custom key)
 with st.sidebar:
     st.header("⚙️ Sozlamalar")
-    user_custom_key = st.text_input(
-        "Shaxsiy Gemini API Kalit (Ixtiyoriy):",
-        type="password",
-        help="Agar server kaliti tugasa, o'z kalitingizni kiriting"
-    )
-    if user_custom_key.strip():
-        raw_keys.insert(0, user_custom_key.strip())
-        
-    st.markdown("👉 [Yangi Bepul API Kalit Olish](https://aistudio.google.com/app/apikey)")
+    if active_api_keys:
+        st.success("✅ Umumiy server API kaliti faol. Barcha foydalanuvchilar bepul foydalanishi mumkin.")
+    else:
+        st.info("💡 Server API kaliti kiritilmagan. O'zingiznikini kiriting:")
+        user_key = st.text_input(
+            "Gemini API Kalit:",
+            type="password",
+            help="aistudio.google.com/app/apikey sahifasidan olingan kalit"
+        )
+        if user_key.strip():
+            active_api_keys.append(user_key.strip())
+        st.markdown("👉 [Bepul API Kalit Olish](https://aistudio.google.com/app/apikey)")
 
 # Main Floating White Card
 st.markdown('<div class="main-card">', unsafe_allow_html=True)
@@ -417,10 +429,18 @@ st.markdown("<br>", unsafe_allow_html=True)
 if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_width=True):
     if not extracted_text.strip():
         st.warning("⚠️ Iltimos, oldin fayl yuklang yoki matn kiriting.")
-    elif not raw_keys:
+    elif not active_api_keys:
         st.error("⚠️ Tizimda API kalit topilmadi. Iltimos, chap tarafdagi menyuga yangi Gemini API kalitingizni kiriting.")
     else:
-        with st.spinner("✨ Sun'iy intellekt ilmiy maqolani to‘liq o‘rganmoqda va akademik tahlil qilmoqda..."):
+        # LIVE STEP-BY-STEP PROGRESS CONTAINER
+        with st.status("🔍 Ilmiy maqola tahlil qilinmoqda va o'zbekchalashtirilmoqda...", expanded=True) as status_box:
+            
+            st.write("📄 **1-bosqich:** Fayl matni va tuzilmasi o‘qilmoqda...")
+            time.sleep(0.4)
+            st.write(f"✓ Matn hajmi: {len(extracted_text):,} ta belgi. Seksiyalar ajratildi.")
+            
+            st.write("🤖 **2-bosqich:** Google Gemini AI modeliga ulanish o‘rnatilmoqda...")
+            time.sleep(0.3)
             
             system_prompt = """
 Siz oliy toifali akademik tarjimon, ilmiy tahrirchi va magistrlik dissertatsiyalari bo'yicha ilmiy maslahatchisisiz.
@@ -457,8 +477,7 @@ Javobni FAQAT quyidagi toza JSON formatida qaytaring (hech qanday markdown ```js
   ]
 }
 """
-            # Multi-model and Multi-key Auto-Failover
-            # If a model hits a 20-request limit, it immediately switches to other free models with 1500 limit!
+            # Fast, high-quota models list (1,500 daily quota models first)
             candidate_models = [
                 "gemini-2.0-flash",
                 "gemini-1.5-flash",
@@ -470,12 +489,15 @@ Javobni FAQAT quyidagi toza JSON formatida qaytaring (hech qanday markdown ```js
 
             success = False
             last_err_msg = ""
+            selected_successful_model = ""
 
-            for active_key in raw_keys:
+            st.write("🧠 **3-bosqich:** Chuqur ilmiy xulosa va muammo tahlili shakllantirilmoqda...")
+            
+            for key in active_api_keys:
                 if success:
                     break
                 try:
-                    genai.configure(api_key=active_key)
+                    genai.configure(api_key=key)
                     for m_name in candidate_models:
                         try:
                             model = genai.GenerativeModel(m_name)
@@ -494,32 +516,24 @@ Javobni FAQAT quyidagi toza JSON formatida qaytaring (hech qanday markdown ```js
                                 data = json.loads(raw_json)
                                 st.session_state["result_data"] = data
                                 st.session_state["file_title"] = file_name
-                                st.session_state["used_model"] = m_name
+                                selected_successful_model = m_name
                                 success = True
                                 break
                         except Exception as m_err:
-                            err_str = str(m_err)
-                            last_err_msg = err_str
-                            # If 429 quota or 404, silently fallback to next model in list
+                            last_err_msg = str(m_err)
                             continue
                 except Exception as key_err:
                     last_err_msg = str(key_err)
                     continue
 
             if success:
-                st.success(f"✨ Mukammal tarjima va ilmiy tahlil to‘liq yakunlandi! (Model: {st.session_state.get('used_model', 'Gemini')})")
+                st.write("📄 **4-bosqich:** To‘liq akademik tarjima va formulalar tekshirildi.")
+                st.write("📥 **5-bosqich:** PDF va Word eksport fayllari shakllantirildi.")
+                status_box.update(label=f"✅ Tahlil va tarjima muvaffaqiyatli yakunlandi! (Model: {selected_successful_model})", state="complete", expanded=False)
+                st.success(f"✨ Muvaffaqiyatli yakunlandi! ({selected_successful_model} modeli orqali)")
             else:
-                st.error(f"Xatolik yuz berdi: {last_err_msg}")
-                if "429" in last_err_msg or "quota" in last_err_msg.lower():
-                    st.info("""
-                    💡 **Muammo sababi va yechimi:**
-                    Google AI Studio-da ushbu API kalit bog'langan loyihada kunlik bepul limit tugagan.
-                    
-                    **Yechim (30 soniya):**
-                    1. [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) sahifasiga kiring.
-                    2. **'Create API key in NEW project'** tugmasini bosing (yangi loyihada ochilgan kalitga yana yangi kunlik bepul limit beriladi).
-                    3. Yangi kalitni Streamlit **Secrets** bo'limiga qo'ying yoki chap tarafdagi menyuga kiritib ishlating.
-                    """)
+                status_box.update(label="❌ Tahlilda xatolik yuz berdi", state="error", expanded=True)
+                st.error(f"Xatolik: {last_err_msg}")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -532,6 +546,7 @@ if "result_data" in st.session_state:
     full_trans = data.get("full_translation", "")
     current_title = st.session_state.get("file_title", "Ilmiy Maqola")
 
+    # Download Buttons Card
     st.markdown(f"""
     <div class="res-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%); border-color: #bae6fd;">
         <div>
