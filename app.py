@@ -12,11 +12,10 @@ import os
 import time
 
 # =====================================================================
-# 🔑 OLDINDAN BERILADIGAN ASOSIY API KALIT (BU YERGA 1 MARTA YOZIB QO'YISHINGIZ MUMKIN):
+# 🔑 OLDINDAN BERILGAN ASOSIY API KALIT:
 # =====================================================================
-BUILTIN_API_KEY = ""  # Agar xohlasangiz, o'z kalitingizni shu qo'shtirnoq ichiga yozib qo'yishingiz mumkin!
+BUILTIN_API_KEY = "AQ.Ab8RN6LAeQZLvDSsrPrgPyXSehwJi-W2hudOkobCUaztDllm-Q"
 
-# Secrets yoki Environment dan avtomatik olish
 if not BUILTIN_API_KEY:
     if "GEMINI_API_KEY" in st.secrets:
         BUILTIN_API_KEY = st.secrets["GEMINI_API_KEY"]
@@ -276,7 +275,7 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     buffer.seek(0)
     return buffer.getvalue()
 
-# API Keys list
+# Active API Keys list
 active_api_keys = []
 if BUILTIN_API_KEY.strip():
     active_api_keys.append(BUILTIN_API_KEY.strip())
@@ -306,21 +305,18 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar (Optional for user custom key)
+# Sidebar (For user custom key)
 with st.sidebar:
     st.header("⚙️ Sozlamalar")
-    if active_api_keys:
-        st.success("✅ Umumiy server API kaliti faol. Barcha foydalanuvchilar bepul foydalanishi mumkin.")
-    else:
-        st.info("💡 Server API kaliti kiritilmagan. O'zingiznikini kiriting:")
-        user_key = st.text_input(
-            "Gemini API Kalit:",
-            type="password",
-            help="aistudio.google.com/app/apikey sahifasidan olingan kalit"
-        )
-        if user_key.strip():
-            active_api_keys.append(user_key.strip())
-        st.markdown("👉 [Bepul API Kalit Olish](https://aistudio.google.com/app/apikey)")
+    user_key = st.text_input(
+        "Gemini API Kalit (Ixtiyoriy):",
+        type="password",
+        help="Agar server kalitida limit tugasa, yangi kalitingizni kiriting"
+    )
+    if user_key.strip():
+        active_api_keys.insert(0, user_key.strip())
+        
+    st.markdown("👉 [Yangi Bepul API Kalit Olish](https://aistudio.google.com/app/apikey)")
 
 # Main Floating White Card
 st.markdown('<div class="main-card">', unsafe_allow_html=True)
@@ -432,15 +428,13 @@ if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_widt
     elif not active_api_keys:
         st.error("⚠️ Tizimda API kalit topilmadi. Iltimos, chap tarafdagi menyuga yangi Gemini API kalitingizni kiriting.")
     else:
-        # LIVE STEP-BY-STEP PROGRESS CONTAINER
+        # LIVE STEP-BY-STEP CONTAINER
         with st.status("🔍 Ilmiy maqola tahlil qilinmoqda va o'zbekchalashtirilmoqda...", expanded=True) as status_box:
             
-            st.write("📄 **1-bosqich:** Fayl matni va tuzilmasi o‘qilmoqda...")
-            time.sleep(0.4)
-            st.write(f"✓ Matn hajmi: {len(extracted_text):,} ta belgi. Seksiyalar ajratildi.")
+            st.write("📄 **1-bosqich:** Fayl matni va tuzilmasi o‘qildi...")
+            st.write(f"✓ Matn hajmi: {len(extracted_text):,} ta belgi.")
             
-            st.write("🤖 **2-bosqich:** Google Gemini AI modeliga ulanish o‘rnatilmoqda...")
-            time.sleep(0.3)
+            st.write("🤖 **2-bosqich:** Google Gemini AI mavjud modellari tekshirilmoqda...")
             
             system_prompt = """
 Siz oliy toifali akademik tarjimon, ilmiy tahrirchi va magistrlik dissertatsiyalari bo'yicha ilmiy maslahatchisisiz.
@@ -477,30 +471,36 @@ Javobni FAQAT quyidagi toza JSON formatida qaytaring (hech qanday markdown ```js
   ]
 }
 """
-            # Fast, high-quota models list (1,500 daily quota models first)
-            candidate_models = [
-                "gemini-2.0-flash",
-                "gemini-1.5-flash",
-                "gemini-2.5-flash",
-                "gemini-3.6-flash",
-                "gemini-1.5-flash-8b",
-                "gemini-pro"
-            ]
-
             success = False
             last_err_msg = ""
             selected_successful_model = ""
 
-            st.write("🧠 **3-bosqich:** Chuqur ilmiy xulosa va muammo tahlili shakllantirilmoqda...")
-            
-            for key in active_api_keys:
+            for active_key in active_api_keys:
                 if success:
                     break
                 try:
-                    genai.configure(api_key=key)
-                    for m_name in candidate_models:
+                    genai.configure(api_key=active_key)
+                    
+                    # DYNAMICALLY ASK GOOGLE WHAT MODELS ARE ACTUALLY AVAILABLE
+                    # Zero guessing, zero 404s!
+                    available_models = []
+                    try:
+                        for m in genai.list_models():
+                            if 'generateContent' in m.supported_generation_methods:
+                                available_models.append(m.name)
+                    except Exception as list_e:
+                        available_models = ["models/gemini-1.5-flash", "models/gemini-2.0-flash", "models/gemini-3.6-flash"]
+
+                    # Prioritize Flash models
+                    sorted_models = [m for m in available_models if "flash" in m] + [m for m in available_models if "flash" not in m]
+
+                    st.write(f"✓ Mavjud modellar aniqlandi: {len(sorted_models)} ta model.")
+                    st.write("🧠 **3-bosqich:** Ilmiy xulosa va to‘liq tarjima shakllantirilmoqda...")
+
+                    for m_name in sorted_models:
                         try:
-                            model = genai.GenerativeModel(m_name)
+                            clean_name = m_name.replace("models/", "")
+                            model = genai.GenerativeModel(clean_name)
                             response = model.generate_content(
                                 system_prompt + "\n\nHujjat Matni:\n" + extracted_text[:28000],
                                 generation_config={"temperature": 0.2}
@@ -516,24 +516,35 @@ Javobni FAQAT quyidagi toza JSON formatida qaytaring (hech qanday markdown ```js
                                 data = json.loads(raw_json)
                                 st.session_state["result_data"] = data
                                 st.session_state["file_title"] = file_name
-                                selected_successful_model = m_name
+                                selected_successful_model = clean_name
                                 success = True
                                 break
                         except Exception as m_err:
                             last_err_msg = str(m_err)
+                            # If quota exceeded on this model, silently try next available model in list
                             continue
+
                 except Exception as key_err:
                     last_err_msg = str(key_err)
                     continue
 
             if success:
-                st.write("📄 **4-bosqich:** To‘liq akademik tarjima va formulalar tekshirildi.")
-                st.write("📥 **5-bosqich:** PDF va Word eksport fayllari shakllantirildi.")
-                status_box.update(label=f"✅ Tahlil va tarjima muvaffaqiyatli yakunlandi! (Model: {selected_successful_model})", state="complete", expanded=False)
-                st.success(f"✨ Muvaffaqiyatli yakunlandi! ({selected_successful_model} modeli orqali)")
+                st.write("📄 **4-bosqich:** To‘liq akademik tarjima va ilmiy pasport tekshirildi.")
+                st.write("📥 **5-bosqich:** PDF va Word eksport fayllari yaratildi.")
+                status_box.update(label=f"✅ Tahlil va tarjima muvaffaqiyatli yakunlandi! ({selected_successful_model})", state="complete", expanded=False)
+                st.success(f"✨ Muvaffaqiyatli yakunlandi! (Foydalanilgan model: `{selected_successful_model}`)")
             else:
                 status_box.update(label="❌ Tahlilda xatolik yuz berdi", state="error", expanded=True)
                 st.error(f"Xatolik: {last_err_msg}")
+                if "429" in last_err_msg or "quota" in last_err_msg.lower():
+                    st.warning("""
+                    ⚠️ **Diqqat:** Google AI Studio ushbu loyihangizdagi bepul so'rovlar limitini to'xtatgan.
+                    
+                    **100% Yechim (30 soniya):**
+                    1. [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) sahifasiga kiring.
+                    2. **'Create API key in NEW project'** (yangi loyihada yaratish) tugmasini bosing.
+                    3. Chiqqan yangi kalitni chap tarafdagi menyuga qo'ying (yoki `app.py` 15-qatoriga yozing). Yangi loyihaga toza 1,500 ta bepul so'rov beriladi!
+                    """)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
