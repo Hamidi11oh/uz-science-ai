@@ -12,13 +12,13 @@ import os
 
 # Page Configuration
 st.set_page_config(
-    page_title="UZ SCIENCE AI | Akademik Tarjimon & Tahlil",
-    page_icon="✨",
+    page_title="UZ SCIENCE AI - Ilmiy Tarjima Platformasi",
+    page_icon="🎓",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom Ultra-Modern SaaS CSS (Linear / Vercel style)
+# Custom Exact-Match Tailwind/Clean CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -27,104 +27,162 @@ st.markdown("""
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
-    /* Main Background & Clean Spacing */
+    /* Background */
+    .stApp {
+        background-color: #f8fafc;
+    }
+    
+    /* Container Width */
     .block-container {
-        padding-top: 2rem !important;
-        padding-bottom: 3rem !important;
-        max-width: 1200px !important;
+        max-width: 960px !important;
+        padding-top: 1.5rem !important;
+        padding-bottom: 4rem !important;
     }
     
-    /* Sleek Top Navbar Banner */
-    .hero-banner {
-        background: radial-gradient(100% 100% at 50% 0%, rgba(2, 132, 199, 0.15) 0%, rgba(248, 250, 252, 0) 100%), #ffffff;
+    /* Top Header Bar */
+    .top-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 20px;
-        padding: 32px 28px;
-        text-align: center;
-        margin-bottom: 24px;
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
+        border-radius: 16px;
+        padding: 12px 20px;
+        margin-bottom: 28px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     }
     
-    .hero-title {
-        font-size: 2.3rem;
-        font-weight: 800;
-        letter-spacing: -0.8px;
-        background: linear-gradient(135deg, #0f172a 0%, #0284c7 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 8px;
+    .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
     
-    .hero-sub {
-        font-size: 1rem;
-        color: #64748b;
-        max-width: 650px;
-        margin: 0 auto;
-        line-height: 1.5;
+    .nav-logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.2rem;
+        box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25);
     }
     
-    .status-pill {
+    .badge-active {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
         background: #f0fdf4;
         border: 1px solid #bbf7d0;
         color: #166534;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
+        padding: 3px 10px;
+        border-radius: 14px;
+        font-size: 0.72rem;
         font-weight: 700;
-        margin-bottom: 12px;
+        margin-left: 8px;
     }
     
-    /* Premium Modern Card */
-    .saas-card {
+    /* Hero Section */
+    .hero-container {
+        text-align: center;
+        margin-bottom: 28px;
+    }
+    
+    .hero-title {
+        font-size: 2.35rem;
+        font-weight: 800;
+        letter-spacing: -0.8px;
+        color: #0f172a;
+        margin-bottom: 10px;
+    }
+    
+    .hero-highlight {
+        background: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    
+    .hero-subtitle {
+        font-size: 0.98rem;
+        color: #64748b;
+        max-width: 620px;
+        margin: 0 auto;
+        line-height: 1.55;
+    }
+    
+    /* Floating Main Card */
+    .main-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 32px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.03), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+        margin-bottom: 24px;
+    }
+    
+    /* Options Box Grid */
+    .option-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px;
+        font-size: 0.85rem;
+    }
+    
+    .option-title {
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.88rem;
+    }
+    
+    /* Result Section Cards */
+    .res-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
         border-radius: 16px;
         padding: 24px;
         margin-bottom: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 6px 16px -4px rgba(0,0,0,0.04);
-        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     }
     
-    .saas-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 10px 25px -5px rgba(0,0,0,0.06);
-    }
-    
-    .card-heading {
-        font-size: 1.1rem;
-        font-weight: 700;
+    .res-card h4 {
         color: #0f172a;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        margin-top: 0;
+        margin-bottom: 10px;
+        font-size: 1.05rem;
+        font-weight: 700;
     }
     
-    .highlight-box {
-        background: #f8fafc;
-        border-left: 4px solid #0284c7;
-        padding: 16px;
-        border-radius: 0 12px 12px 0;
-        margin-bottom: 14px;
+    .focus-banner {
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border: 1px solid #bfdbfe;
+        border-left: 6px solid #0284c7;
+        padding: 20px 24px;
+        border-radius: 14px;
+        margin-bottom: 20px;
     }
     
-    /* Tabs styling */
+    /* Tabs Styling */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
+        gap: 8px;
         border-bottom: 1px solid #e2e8f0;
         padding-bottom: 8px;
     }
 
     .stTabs [data-baseweb="tab"] {
         border-radius: 10px;
-        padding: 10px 20px;
+        padding: 8px 18px;
         font-weight: 600;
-        font-size: 0.9rem;
+        font-size: 0.88rem;
         color: #64748b;
-        background-color: #f8fafc;
+        background-color: #ffffff;
         border: 1px solid #e2e8f0;
     }
 
@@ -132,26 +190,31 @@ st.markdown("""
         background-color: #0284c7 !important;
         color: #ffffff !important;
         border-color: #0284c7 !important;
-        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
     }
     
-    /* Big Action Button */
+    /* Primary Button */
     .stButton button {
         background: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%) !important;
         color: white !important;
         border: none !important;
         padding: 14px 28px !important;
-        border-radius: 12px !important;
+        border-radius: 14px !important;
         font-weight: 700 !important;
-        font-size: 1rem !important;
-        letter-spacing: 0.2px !important;
-        box-shadow: 0 8px 20px -4px rgba(2, 132, 199, 0.35) !important;
+        font-size: 1.05rem !important;
+        box-shadow: 0 10px 20px -3px rgba(2, 132, 199, 0.35) !important;
         transition: all 0.2s ease !important;
     }
     
     .stButton button:hover {
         transform: translateY(-1px) !important;
-        box-shadow: 0 12px 25px -4px rgba(2, 132, 199, 0.45) !important;
+        box-shadow: 0 14px 25px -3px rgba(2, 132, 199, 0.45) !important;
+    }
+    
+    .footer-text {
+        text-align: center;
+        font-size: 0.78rem;
+        color: #94a3b8;
+        margin-top: 36px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -173,11 +236,10 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     story.append(Spacer(1, 8))
     
     # 1. Chuqur Ilmiy Xulosa
-    story.append(Paragraph("<b>1. Chuqur Ilmiy Xulosa va Tahlil</b>", h1_style))
+    story.append(Paragraph("<b>1. Chuqur Ilmiy Xulosa va Tahlil (Executive Summary)</b>", h1_style))
     for k, v in summary_data.items():
         label = k.replace('_', ' ').capitalize()
         story.append(Paragraph(f"<b>• {label}:</b> {str(v).replace('<', '&lt;').replace('>', '&gt;')}", body_style))
-    
     story.append(Spacer(1, 8))
     
     # 2. Magistr Yo'riqnomasi
@@ -185,7 +247,6 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     for k, v in thesis_data.items():
         label = k.replace('_', ' ').capitalize()
         story.append(Paragraph(f"<b>• {label}:</b> {str(v).replace('<', '&lt;').replace('>', '&gt;')}", body_style))
-        
     story.append(Spacer(1, 8))
 
     # 3. Terminlar
@@ -209,31 +270,45 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     buffer.seek(0)
     return buffer.getvalue()
 
-# Automatic Master API Key Resolution (No user input required if configured in Secrets or Environment)
+# Automatic Master API Key Resolution (from Streamlit Secrets or Environment)
 MASTER_KEY = ""
 if "GEMINI_API_KEY" in st.secrets:
     MASTER_KEY = st.secrets["GEMINI_API_KEY"]
 elif os.environ.get("GEMINI_API_KEY"):
     MASTER_KEY = os.environ.get("GEMINI_API_KEY")
 
-# Hero Banner
-status_text = "🟢 Tizim tayyor • Gemini 3.6 Flash faol" if MASTER_KEY else "⚪ Shaxsiy API kalit kiritish mumkin"
+# Top Navigation Bar
+status_badge = '<span class="badge-active"><span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span> Gemini AI Faol</span>' if MASTER_KEY else '<span class="badge-active" style="background:#fffbeb; border-color:#fde68a; color:#b45309;">API Kalit kiritilmagan</span>'
+
 st.markdown(f"""
-<div class="hero-banner">
-    <div class="status-pill">{status_text}</div>
-    <div class="hero-title">UZ SCIENCE AI</div>
-    <div class="hero-sub">Xorijiy ilmiy maqolalar, dissertatsiyalar va taqdimotlarni mazmunini buzmasdan akademik o‘zbek tiliga o‘giruvchi hamda dissertatsiya uchun chuqur tahlil qiluvchi aqlli tizim.</div>
+<div class="top-nav">
+    <div class="nav-brand">
+        <div class="nav-logo">✨</div>
+        <div>
+            <div style="font-weight: 800; font-size: 1.15rem; color: #0f172a; display: flex; align-items: center;">
+                UZ SCIENCE AI {status_badge}
+            </div>
+            <div style="font-size: 0.76rem; color: #64748b;">Magistrant va tadqiqotchilar uchun ilmiy tarjima platformasi</div>
+        </div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar (Only for optional personal API key or custom overrides)
+# Hero Section
+st.markdown("""
+<div class="hero-container">
+    <div class="hero-title">Ilmiy maqolalarni <span class="hero-highlight">o‘zbek tiliga</span> tarjima qiling</div>
+    <div class="hero-subtitle">PDF, DOCX, PPTX yoki matnni to‘g‘ridan-to‘g‘ri joylashtiring. Akademik uslub, formulalar va terminologiya to‘liq saqlanadi.</div>
+</div>
+""", unsafe_allow_html=True)
+
+# Sidebar (Only for optional personal API key if needed)
 with st.sidebar:
     st.header("⚙️ Sozlamalar")
     if MASTER_KEY:
-        st.success("✅ Umumiy server API kaliti faol. Saytdan barcha bepul foydalanishi mumkin.")
+        st.success("✅ Umumiy server API kaliti faol.")
         api_key = MASTER_KEY
     else:
-        st.info("💡 Agar sayt egasi umumiy kalit kiritmagan bo'lsa, o'z kalitingizni kiriting:")
         api_key = st.text_input(
             "Google Gemini API Kalit:",
             type="password",
@@ -241,26 +316,22 @@ with st.sidebar:
         )
         st.markdown("👉 [Bepul API Kalit Olish](https://aistudio.google.com/app/apikey)")
 
-    selected_model = "gemini-3.6-flash"
-    st.divider()
-    st.markdown("### 📋 Platforma Imkoniyatlari")
-    st.markdown("✔️ **Formatlar:** PDF, PPTX (taqdimot), DOCX, TXT")
-    st.markdown("✔️ **Formatlash:** Formulalar, LaTeX va iqtiboslar saqlanadi")
-    st.markdown("✔️ **Magistr Pasporti:** SOTA natijalar, yangilik, thesis tavsiyalari")
-    st.markdown("✔️ **Eksport:** Ham **PDF**, ham **Word (.docx)** yuklab olish")
+# Main Floating White Card
+st.markdown('<div class="main-card">', unsafe_allow_html=True)
 
-# Main Input Section
-tab_upload, tab_paste = st.tabs(["📁 Fayl Yuklash (PDF • PPTX • DOCX)", "✍️ Matnni Joylashtirish (Paste)"])
+# Input Mode Tabs
+tab_upload, tab_paste = st.tabs(["📄 Fayl Yuklash (PDF/DOCX/PPTX)", "✍️ Matnni Qo‘yish (Paste)"])
 
 extracted_text = ""
 file_name = "Ilmiy Hujjat"
 
 with tab_upload:
     uploaded_file = st.file_uploader(
-        "Ilmiy maqola, dissertatsiya yoki taqdimot faylini tanlang:",
+        "PDF yoki boshqa faylni shu yerga tashlang (PDF • DOCX • PPTX • TXT):",
         type=["pdf", "docx", "pptx", "txt"],
-        help="PDF, Word yoki PowerPoint fayllarni to'g'ridan-to'g'ri yuklashingiz mumkin"
+        label_visibility="collapsed"
     )
+    
     if uploaded_file is not None:
         file_name = uploaded_file.name
         suffix = file_name.split(".")[-1].lower()
@@ -294,25 +365,62 @@ with tab_upload:
             
             if extracted_text.strip():
                 st.markdown(f"""
-                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px 18px; border-radius: 12px; color: #166534; font-size: 0.92rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between;">
-                    <span>📄 <b>{file_name}</b> muvaffaqiyatli o‘qildi</span>
-                    <span style="background: #dcfce7; padding: 2px 8px; border-radius: 6px; font-size: 0.8rem;">{len(extracted_text):,} belgi</span>
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px 16px; border-radius: 10px; color: #166534; font-size: 0.88rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; margin-top: 10px;">
+                    <span>📄 <b>{file_name}</b> muvaffaqiyatli yuklandi</span>
+                    <span style="background: #dcfce7; padding: 2px 8px; border-radius: 6px; font-size: 0.78rem;">{len(extracted_text):,} belgi</span>
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                st.warning("⚠️ Fayldan matn ajratib bo'lmadi. Agar bu skaner qilingan rasm bo'lsa, 'Matnni Joylashtirish' bo'limidan foydalaning.")
+                st.warning("⚠️ Fayldan matn ajratib bo'lmadi. Agar bu skaner qilingan rasm bo'lsa, 'Matnni Qo‘yish' bo'limidan foydalaning.")
         except Exception as e:
             st.error(f"Faylni o'qishda xatolik: {e}")
 
 with tab_paste:
-    direct_text = st.text_area("Maqola matnini to'g'ridan-to'g'ri shu yerga qo'ying:", height=180, placeholder="Abstract, Introduction yoki butun maqola matnini Ctrl+V qilib tashlang...")
+    direct_text = st.text_area(
+        "Maqola matnini joylashtiring:",
+        height=180,
+        placeholder="Abstract, Introduction yoki butun maqola matnini Ctrl+V qilib bu yerga tashlang...",
+        label_visibility="collapsed"
+    )
     if direct_text.strip():
         extracted_text = direct_text
         file_name = "Kiritilgan Maqola Matni"
 
+# Presets & Settings Info Grid (Exact match with design)
+st.markdown("<br>", unsafe_allow_html=True)
+col_opt1, col_opt2 = st.columns(2)
+
+with col_opt1:
+    st.markdown("""
+    <div class="option-box">
+        <div class="option-title">🌐 Til sozlamalari</div>
+        <div style="display: flex; gap: 8px;">
+            <div style="flex:1; background:#ffffff; border:1px solid #cbd5e1; padding:6px 10px; border-radius:8px; font-size:0.78rem; color:#475569;">
+                <b>Asl til:</b> 🔄 Avtomatik
+            </div>
+            <div style="flex:1; background:#f0f9ff; border:1px solid #bae6fd; padding:6px 10px; border-radius:8px; font-size:0.78rem; color:#0369a1;">
+                <b>Tarjima:</b> 🇺🇿 O‘zbek tili
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_opt2:
+    st.markdown("""
+    <div class="option-box">
+        <div class="option-title">🛡️ Akademik rejim qoidalari</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.76rem; color: #334155;">
+            <div>☑️ Ilmiy uslub</div>
+            <div>☑️ Terminlar bazasi</div>
+            <div>☑️ Formulalar & Kod</div>
+            <div>☑️ Iqtiboslar (Citations)</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
 # Big Action Button
 st.markdown("<br>", unsafe_allow_html=True)
-if st.button("🚀 MUKAMMAL TARJIMA VA CHUQUR TAHLIL QILISH", type="primary", use_container_width=True):
+if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_width=True):
     if not extracted_text.strip():
         st.warning("⚠️ Iltimos, oldin fayl yuklang yoki matn kiriting.")
     elif not api_key:
@@ -377,7 +485,9 @@ Javobni FAQAT quyidagi toza JSON formatida qaytaring (hech qanday markdown ```js
             except Exception as err:
                 st.error(f"Xatolik yuz berdi: {err}")
 
-# Results Dashboard
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Results Section
 if "result_data" in st.session_state:
     data = st.session_state["result_data"]
     summary = data.get("research_summary", {})
@@ -386,16 +496,12 @@ if "result_data" in st.session_state:
     full_trans = data.get("full_translation", "")
     current_title = st.session_state.get("file_title", "Ilmiy Maqola")
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Download Card Section
+    # Download Buttons Card
     st.markdown(f"""
-    <div class="saas-card" style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1px solid #cbd5e1;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-            <div>
-                <h3 style="margin: 0; color: #0f172a; font-size: 1.25rem; font-weight: 800;">📄 {current_title}</h3>
-                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.88rem;">Akademik tahlil va tarjima hujjati to‘liq shakllantirildi</p>
-            </div>
+    <div class="res-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%); border-color: #bae6fd;">
+        <div>
+            <div style="font-weight: 800; font-size: 1.15rem; color: #0369a1;">📄 {current_title}</div>
+            <div style="font-size: 0.82rem; color: #64748b;">Akademik tarjima va tahliliy hisobot tayyor</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -405,7 +511,7 @@ if "result_data" in st.session_state:
         try:
             pdf_bytes = create_pdf(current_title, full_trans, summary, thesis, terms)
             st.download_button(
-                label="📥 To‘liq PDF Hisobotni Yuklab Olish",
+                label="📥 PDF Formatida Yuklab Olish",
                 data=pdf_bytes,
                 file_name=f"UZ_SCIENCE_AI_{current_title}.pdf",
                 mime="application/pdf",
@@ -439,7 +545,7 @@ if "result_data" in st.session_state:
             docx_io.seek(0)
 
             st.download_button(
-                label="📄 Tahrirlanadigan Word (.docx) Hujjatini Yuklab Olish",
+                label="📄 Word (.docx) Formatida Yuklab Olish",
                 data=docx_io,
                 file_name=f"UZ_SCIENCE_AI_{current_title}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -449,7 +555,7 @@ if "result_data" in st.session_state:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 4 Detailed Analysis Tabs
+    # 4 Output Tabs
     res_tab1, res_tab2, res_tab3, res_tab4 = st.tabs([
         "🧠 Chuqur Ilmiy Xulosa (Summary)",
         "📄 To‘liq Akademik Tarjima",
@@ -459,75 +565,74 @@ if "result_data" in st.session_state:
 
     # Tab 1: Deep Research Summary
     with res_tab1:
-        # Key Focus Areas Hero Card
         st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe; border-left: 6px solid #0284c7; padding: 20px 24px; border-radius: 14px; margin-bottom: 24px;">
-            <div style="font-size: 0.8rem; font-weight: 800; text-transform: uppercase; color: #0284c7; letter-spacing: 0.5px; margin-bottom: 6px;">⚡ DIQQAT MARKAZI • ENG MUHIM QISM</div>
-            <h4 style="color: #0c4a6e; margin: 0 0 8px 0; font-size: 1.15rem; font-weight: 800;">Ushbu maqolada nimasiga alohida e’tibor berish kerak?</h4>
-            <p style="color: #1e293b; font-size: 0.96rem; margin: 0; line-height: 1.65;">{summary.get('key_focus_areas', '-')}</p>
+        <div class="focus-banner">
+            <div style="font-size: 0.78rem; font-weight: 800; text-transform: uppercase; color: #0284c7; letter-spacing: 0.5px; margin-bottom: 4px;">⚡ DIQQAT MARKAZI • ENG MUHIM QISM</div>
+            <h4 style="color: #0c4a6e; margin: 0 0 6px 0; font-size: 1.1rem; font-weight: 800;">Ushbu maqolada nimasiga alohida e’tibor berish kerak?</h4>
+            <p style="color: #1e293b; font-size: 0.94rem; margin: 0; line-height: 1.6;">{summary.get('key_focus_areas', '-')}</p>
         </div>
         """, unsafe_allow_html=True)
 
         col_s1, col_s2 = st.columns(2)
         with col_s1:
             st.markdown(f"""
-            <div class="saas-card">
-                <div class="card-heading">🎯 1. Ko‘tarilgan Asosiy Muammo</div>
-                <p style="color: #334155; font-size: 0.93rem; line-height: 1.6; margin: 0;">{summary.get('core_problem', '-')}</p>
+            <div class="res-card">
+                <h4>🎯 1. Ko‘tarilgan Asosiy Muammo</h4>
+                <p style="color: #334155; font-size: 0.9rem; line-height: 1.55; margin: 0;">{summary.get('core_problem', '-')}</p>
             </div>
             """, unsafe_allow_html=True)
             
             st.markdown(f"""
-            <div class="saas-card">
-                <div class="card-heading">📊 3. Natijalar va Benchmarklar</div>
-                <p style="color: #334155; font-size: 0.93rem; line-height: 1.6; margin: 0;">{summary.get('experimental_results', '-')}</p>
+            <div class="res-card">
+                <h4>📊 3. Natijalar va Benchmarklar</h4>
+                <p style="color: #334155; font-size: 0.9rem; line-height: 1.55; margin: 0;">{summary.get('experimental_results', '-')}</p>
             </div>
             """, unsafe_allow_html=True)
 
         with col_s2:
             st.markdown(f"""
-            <div class="saas-card">
-                <div class="card-heading">💡 2. Taklif Etilgan Yechim & Metod</div>
-                <p style="color: #334155; font-size: 0.93rem; line-height: 1.6; margin: 0;">{summary.get('proposed_solution', '-')}</p>
+            <div class="res-card">
+                <h4>💡 2. Taklif Etilgan Yechim & Metod</h4>
+                <p style="color: #334155; font-size: 0.9rem; line-height: 1.55; margin: 0;">{summary.get('proposed_solution', '-')}</p>
             </div>
             """, unsafe_allow_html=True)
 
             st.markdown(f"""
-            <div class="saas-card">
-                <div class="card-heading">⏳ 4. Cheklovlar va Kamchiliklar</div>
-                <p style="color: #334155; font-size: 0.93rem; line-height: 1.6; margin: 0;">{summary.get('limitations', '-')}</p>
+            <div class="res-card">
+                <h4>⏳ 4. Cheklovlar va Kamchiliklar</h4>
+                <p style="color: #334155; font-size: 0.9rem; line-height: 1.55; margin: 0;">{summary.get('limitations', '-')}</p>
             </div>
             """, unsafe_allow_html=True)
 
     # Tab 2: Full Translation
     with res_tab2:
         st.markdown(f"""
-        <div class="saas-card">
-            <div class="card-heading">🇺🇿 Hech Qayeri Qisqartirilmagan To‘liq Akademik Tarjima</div>
-            <div style="color: #1e293b; font-size: 0.95rem; line-height: 1.7; white-space: pre-wrap;">{full_trans}</div>
+        <div class="res-card">
+            <h4>🇺🇿 Hech Qayeri Qisqartirilmagan To‘liq Akademik Tarjima</h4>
+            <div style="color: #1e293b; font-size: 0.94rem; line-height: 1.7; white-space: pre-wrap;">{full_trans}</div>
         </div>
         """, unsafe_allow_html=True)
 
     # Tab 3: Master Thesis Advisor
     with res_tab3:
         st.markdown(f"""
-        <div class="saas-card">
-            <div class="card-heading">📌 Qayerda va qanday iqtibos (citation) olish kerak?</div>
-            <p style="color: #334155; font-size: 0.95rem; line-height: 1.65; margin: 0;">{thesis.get('where_to_cite', '-')}</p>
+        <div class="res-card">
+            <h4>📌 Qayerda va qanday iqtibos (citation) olish kerak?</h4>
+            <p style="color: #334155; font-size: 0.92rem; line-height: 1.6; margin: 0;">{thesis.get('where_to_cite', '-')}</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown(f"""
-        <div class="saas-card">
-            <div class="card-heading">🔬 Metodologiyani o‘z tadqiqotingizda qanday qo‘llash mumkin?</div>
-            <p style="color: #334155; font-size: 0.95rem; line-height: 1.65; margin: 0;">{thesis.get('how_to_use_method', '-')}</p>
+        <div class="res-card">
+            <h4>🔬 Metodologiyani o‘z tadqiqotingizda qanday qo‘llash mumkin?</h4>
+            <p style="color: #334155; font-size: 0.92rem; line-height: 1.6; margin: 0;">{thesis.get('how_to_use_method', '-')}</p>
         </div>
         """, unsafe_allow_html=True)
 
         st.markdown(f"""
-        <div class="saas-card" style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 5px solid #f59e0b;">
-            <div class="card-heading" style="color: #92400e;">💡 Ushbu maqola asosida yangi dissertatsiya / maqola g‘oyasi:</div>
-            <p style="color: #78350f; font-size: 0.95rem; line-height: 1.65; font-weight: 500; margin: 0;">{thesis.get('new_research_idea', '-')}</p>
+        <div class="res-card" style="background: #fffbeb; border-color: #fde68a; border-left: 5px solid #f59e0b;">
+            <h4 style="color: #92400e;">💡 Ushbu maqola asosida yangi dissertatsiya / maqola g‘oyasi:</h4>
+            <p style="color: #78350f; font-size: 0.92rem; line-height: 1.6; font-weight: 500; margin: 0;">{thesis.get('new_research_idea', '-')}</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -536,13 +641,20 @@ if "result_data" in st.session_state:
         if terms:
             for item in terms:
                 st.markdown(f"""
-                <div class="saas-card" style="padding: 16px 20px; margin-bottom: 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <span style="font-weight: 800; color: #0284c7; font-size: 1rem;">{item.get('term_en', '')}</span>
-                        <span style="font-weight: 700; color: #0f172a; font-size: 0.88rem; background: #e0f2fe; padding: 3px 10px; border-radius: 8px;">🇺🇿 {item.get('term_uz', '')}</span>
+                <div class="res-card" style="padding: 14px 18px; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-weight: 800; color: #0284c7; font-size: 0.95rem;">{item.get('term_en', '')}</span>
+                        <span style="font-weight: 700; color: #0f172a; font-size: 0.84rem; background: #e0f2fe; padding: 2px 8px; border-radius: 6px;">🇺🇿 {item.get('term_uz', '')}</span>
                     </div>
-                    <p style="margin: 0; font-size: 0.9rem; color: #475569; line-height: 1.5;">{item.get('desc', '')}</p>
+                    <p style="margin: 0; font-size: 0.86rem; color: #475569; line-height: 1.45;">{item.get('desc', '')}</p>
                 </div>
                 """, unsafe_allow_html=True)
         else:
             st.info("Terminlar ro‘yxati mavjud emas.")
+
+# Footer
+st.markdown("""
+<div class="footer-text">
+    © 2026 UZ SCIENCE AI — Magistrant va ilmiy izlanuvchilar uchun universal platforma.
+</div>
+""", unsafe_allow_html=True)
