@@ -12,7 +12,7 @@ import os
 import time
 
 # =====================================================================
-# 1. SAHIFA KONFIGURATSIYASI VA ZAMONAVIY MINIMALIST DIZAYN
+# 1. SAHIFA SOZLAMALARI VA ZAMONAVIY ANIQ DIZAYN
 # =====================================================================
 st.set_page_config(
     page_title="UZ SCIENCE AI - Professional Ilmiy Platforma",
@@ -246,42 +246,39 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     return buffer.getvalue()
 
 # =====================================================================
-# 2. PROVAyDER VA API SOZLAMALARI (GEMINI YOKI GROQ)
+# 2. PROVAYDER VA KALITLAR (SECRETS VA INPUT)
 # =====================================================================
-# Default keys from Secrets
-gemini_secret = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", "")).strip().strip("'\" \n\r\t")
 groq_secret = st.secrets.get("GROQ_API_KEY", os.environ.get("GROQ_API_KEY", "")).strip().strip("'\" \n\r\t")
+gemini_secret = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", "")).strip().strip("'\" \n\r\t")
 
 with st.sidebar:
-    st.header("⚙️ AI Dvigateli Sozlamalari")
+    st.header("⚙️ Dvigatel Sozlamalari")
     ai_provider = st.radio(
         "AI Provayderini Tanlang:",
-        ["Google Gemini (Rasmiy)", "Groq AI (Llama 3.3 - 100% Limitsiz Bepul)"],
-        index=0,
-        help="Agar Google API kalitingizda 401 yoki 429 xatolik bo'lsa, Groq AI ga o'ting (u hech qachon 401 xatosi bermaydi)."
+        ["Groq AI (Llama 3 - 100% Limitsiz Bepul)", "Google Gemini"],
+        index=0
     )
     
-    if "Gemini" in ai_provider:
+    if "Groq" in ai_provider:
         api_input = st.text_input(
-            "Gemini API Kalit:",
-            value=gemini_secret,
-            type="password",
-            help="console.cloud.google.com/apis/credentials dan olingan kalit"
-        )
-        st.markdown("👉 [Gemini Kalit Olish](https://aistudio.google.com/app/apikey)")
-    else:
-        api_input = st.text_input(
-            "Groq API Kalit:",
+            "Groq API Kalit (gsk_...):",
             value=groq_secret,
             type="password",
             help="console.groq.com saytidan 10 soniyada olingan bepul kalit"
         )
-        st.markdown("👉 [Bepul Groq Kalit Olish (14,400 so'rov/kun)](https://console.groq.com/keys)")
+        st.markdown("👉 [Bepul Groq Kalit Olish](https://console.groq.com/keys)")
+    else:
+        api_input = st.text_input(
+            "Gemini API Kalit:",
+            value=gemini_secret,
+            type="password",
+            help="console.cloud.google.com dan olingan kalit"
+        )
+        st.markdown("👉 [Gemini Kalit Olish](https://aistudio.google.com/app/apikey)")
 
 active_key = api_input.strip().strip("'\" \n\r\t")
 is_active = len(active_key) > 5
 
-# Top Navigation Bar
 status_badge = '<span style="display:inline-flex;align-items:center;gap:5px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:3px 10px;border-radius:14px;font-size:0.72rem;font-weight:700;margin-left:8px;"><span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span> AI Faol</span>' if is_active else '<span style="display:inline-flex;align-items:center;gap:5px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;padding:3px 10px;border-radius:14px;font-size:0.72rem;font-weight:700;margin-left:8px;">Kalit Kiritilmagan</span>'
 
 st.markdown(f"""
@@ -298,7 +295,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# Hero Section
 st.markdown("""
 <div class="hero-container">
     <div class="hero-title">Ilmiy maqolalarni <span class="hero-highlight">o‘zbek tiliga</span> tarjima qiling</div>
@@ -306,10 +302,8 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Main Floating White Card
 st.markdown('<div class="main-card">', unsafe_allow_html=True)
 
-# Input Mode Tabs
 tab_upload, tab_paste = st.tabs(["📄 Fayl Yuklash (PDF/DOCX/PPTX)", "✍️ Matnni Qo‘yish (Paste)"])
 
 extracted_text = ""
@@ -376,7 +370,6 @@ with tab_paste:
         extracted_text = direct_text
         file_name = "Kiritilgan Maqola Matni"
 
-# Presets & Settings Info Grid
 st.markdown("<br>", unsafe_allow_html=True)
 col_opt1, col_opt2 = st.columns(2)
 
@@ -408,7 +401,6 @@ with col_opt2:
     </div>
     """, unsafe_allow_html=True)
 
-# Central Prompt
 SYSTEM_ACADEMIC_PROMPT = """
 Siz oliy toifali akademik tarjimon, ilmiy tahrirchi va magistrlik dissertatsiyalari bo'yicha ilmiy maslahatchisisiz.
 Vazifangiz: Taqdim etilgan ilmiy maqola / akademik hujjatni quyidagi 4 ta asosiy bo'lim bo'yicha mukammal akademik o'zbek tilida tahlil qilib berish.
@@ -445,7 +437,70 @@ Javobni FAQAT quyidagi toza JSON formatida qaytaring (hech qanday markdown ```js
 }
 """
 
-def call_gemini(key, text):
+def call_groq_dynamic(key, text):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}"
+    }
+    
+    # 1. Ask Groq which models are active for this account
+    available_models = []
+    try:
+        m_resp = requests.get("https://api.groq.com/openai/v1/models", headers=headers, timeout=10)
+        if m_resp.status_code == 200:
+            for item in m_resp.json().get("data", []):
+                mid = item.get("id", "")
+                if "whisper" not in mid and "guard" not in mid and "vision" not in mid:
+                    available_models.append(mid)
+    except Exception:
+        pass
+
+    # Priority list of Groq models (8B and 70B instant models)
+    priority = [
+        "llama-3.1-8b-instant",
+        "llama3-70b-8192",
+        "llama-3.3-70b-versatile",
+        "llama-3.1-70b-versatile",
+        "mixtral-8x7b-32768",
+        "gemma2-9b-it"
+    ]
+    
+    models_to_try = []
+    for p in priority:
+        if p in available_models:
+            models_to_try.append(p)
+    for m in available_models:
+        if m not in models_to_try:
+            models_to_try.append(m)
+    if not models_to_try:
+        models_to_try = ["llama-3.1-8b-instant", "llama3-70b-8192", "mixtral-8x7b-32768"]
+
+    last_err = ""
+    for model_name in models_to_try:
+        payload = {
+            "model": model_name,
+            "messages": [
+                {"role": "system", "content": SYSTEM_ACADEMIC_PROMPT},
+                {"role": "user", "content": "Hujjat Matni:\n" + text[:28000]}
+            ],
+            "temperature": 0.2,
+            "response_format": {"type": "json_object"}
+        }
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=60)
+            if r.status_code == 200:
+                data = r.json()
+                return data["choices"][0]["message"]["content"], f"Groq ({model_name})"
+            else:
+                last_err = f"HTTP {r.status_code}: {r.text}"
+        except Exception as e:
+            last_err = str(e)
+            continue
+            
+    raise Exception(last_err or "Groq orqali ulanish muvaffaqiyatsiz bo'ldi.")
+
+def call_gemini_pure(key, text):
     headers = {"Content-Type": "application/json"}
     payload = {
         "contents": [{"parts": [{"text": SYSTEM_ACADEMIC_PROMPT + "\n\nHujjat Matni:\n" + text[:28000]}]}],
@@ -467,29 +522,6 @@ def call_gemini(key, text):
             continue
     raise Exception(last_err)
 
-def call_groq(key, text):
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {key}"
-    }
-    payload = {
-        "model": "llama-3.3-70b-versatile",
-        "messages": [
-            {"role": "system", "content": SYSTEM_ACADEMIC_PROMPT},
-            {"role": "user", "content": "Hujjat Matni:\n" + text[:28000]}
-        ],
-        "temperature": 0.2,
-        "response_format": {"type": "json_object"}
-    }
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    r = requests.post(url, headers=headers, json=payload, timeout=60)
-    if r.status_code == 200:
-        data = r.json()
-        return data["choices"][0]["message"]["content"], "Groq (Llama 3.3 70B)"
-    else:
-        raise Exception(f"Groq API xatosi HTTP {r.status_code}: {r.text}")
-
-# Big Action Button
 st.markdown("<br>", unsafe_allow_html=True)
 if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_width=True):
     if not extracted_text.strip():
@@ -504,10 +536,10 @@ if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_widt
             st.write("🧠 **3-bosqich:** Chuqur ilmiy xulosa va to‘liq tarjima shakllantirilmoqda...")
             
             try:
-                if "Gemini" in ai_provider:
-                    raw_json, used_model = call_gemini(active_key, extracted_text)
+                if "Groq" in ai_provider:
+                    raw_json, used_model = call_groq_dynamic(active_key, extracted_text)
                 else:
-                    raw_json, used_model = call_groq(active_key, extracted_text)
+                    raw_json, used_model = call_gemini_pure(active_key, extracted_text)
                     
                 clean_json = raw_json.strip()
                 if clean_json.startswith("```json"):
@@ -528,12 +560,6 @@ if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_widt
             except Exception as err:
                 status_box.update(label="❌ Tahlilda xatolik yuz berdi", state="error", expanded=True)
                 st.error(f"Xatolik: {err}")
-                if "401" in str(err) and "Gemini" in ai_provider:
-                    st.info("""
-                    💡 **401 xatoligini bir zumda hal qilish:**
-                    Chap tomondagi menyudan **'Groq AI (Llama 3.3 - 100% Limitsiz Bepul)'** ni tanlang.
-                    [console.groq.com/keys](https://console.groq.com/keys) dan 10 soniyada bepul kalit olib qo'ysangiz, hech qanday Google 401 yoki 429 xatolarisiz 100% tez va barqaror ishlaydi!
-                    """)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
