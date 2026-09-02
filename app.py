@@ -15,7 +15,7 @@ import time
 # =====================================================================
 AUTHOR_NAME = "Qosimjonov Hamidullo"
 
-# Streamlit Secrets-dan kalitni avtomatik olish (Fayl ichida kalit yozilmaydi)
+# Streamlit Secrets-dan kalitni avtomatik olish
 BUILTIN_GROQ_KEY = ""
 if "GROQ_API_KEY" in st.secrets:
     BUILTIN_GROQ_KEY = str(st.secrets["GROQ_API_KEY"]).strip().strip("'\" \n\r\t")
@@ -232,7 +232,7 @@ def create_pdf(title, translation_text, summary_text, thesis_text, terms_text):
     story.append(Paragraph(f"<i>Muallif: {AUTHOR_NAME} · To‘liq akademik tarjima va ilmiy tahliliy pasport</i>", body_style))
     story.append(Spacer(1, 10))
     
-    # 1. BOSH O'RINDA: TO'LIQ AKADEMIK TARJIMA
+    # 1. TO'LIQ AKADEMIK TARJIMA (BOSHIDA)
     story.append(Paragraph("<b>1. TO‘LIQ AKADEMIK O‘ZBEKCHA TARJIMA (ASOSIY MATN)</b>", h1_style))
     for p in translation_text.split('\n'):
         if p.strip():
@@ -469,40 +469,65 @@ def execute_groq_master(key, text):
         "Authorization": f"Bearer {key}"
     }
     
-    # Auto-detect available Groq models
-    active_model = "llama-3.1-8b-instant"
+    # 1. 100% DYNAMIC: Ask Groq which models are active for this account right now!
+    active_chat_models = []
     try:
         r_mod = requests.get("https://api.groq.com/openai/v1/models", headers=headers, timeout=10)
         if r_mod.status_code == 200:
-            m_list = [m["id"] for m in r_mod.json().get("data", []) if "whisper" not in m["id"] and "guard" not in m["id"]]
-            candidates = ["llama-3.1-8b-instant", "llama3-70b-8192", "mixtral-8x7b-32768", "gemma2-9b-it"]
-            for c in candidates:
-                if c in m_list:
-                    active_model = c
-                    break
+            for item in r_mod.json().get("data", []):
+                mid = item.get("id", "")
+                if "whisper" not in mid and "guard" not in mid and "vision" not in mid:
+                    active_chat_models.append(mid)
     except Exception:
         pass
 
-    # Single comprehensive payload without JSON constraints (Never breaks JSON)
-    payload = {
-        "model": active_model,
-        "messages": [
-            {"role": "system", "content": MASTER_PIPELINE_PROMPT},
-            {"role": "user", "content": f"Quyidagi ilmiy maqolani tahlil qiling va 4 ta bo'limda natija bering:\n\n{text[:25000]}"}
-        ],
-        "temperature": 0.2,
-        "max_tokens": 7500
-    }
+    # Preferred new 2026 models order (with gpt-oss-20b, gpt-oss-120b, qwen3.6)
+    preferred_order = [
+        "openai/gpt-oss-20b",
+        "openai/gpt-oss-120b",
+        "qwen/qwen3.6-27b",
+        "groq/compound",
+        "groq/compound-mini",
+        "gemma2-9b-it"
+    ]
     
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    r = requests.post(url, headers=headers, json=payload, timeout=90)
-    
-    if r.status_code == 200:
-        raw_text = r.json()["choices"][0]["message"]["content"]
-        sections = parse_markdown_response(raw_text)
-        return sections, f"Groq ({active_model})"
-    else:
-        raise Exception(f"Groq API javobi HTTP {r.status_code}: {r.text}")
+    models_to_try = []
+    for pref in preferred_order:
+        if pref in active_chat_models:
+            models_to_try.append(pref)
+    for m in active_chat_models:
+        if m not in models_to_try:
+            models_to_try.append(m)
+            
+    if not models_to_try:
+        models_to_try = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.6-27b"]
+
+    last_error_text = ""
+    for model_candidate in models_to_try:
+        payload = {
+            "model": model_candidate,
+            "messages": [
+                {"role": "system", "content": MASTER_PIPELINE_PROMPT},
+                {"role": "user", "content": f"Quyidagi ilmiy maqolani to'liq tahlil qilib, 4 ta bo'limda natija bering:\n\n{text[:25000]}"}
+            ],
+            "temperature": 0.2,
+            "max_tokens": 7500
+        }
+        
+        try:
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            r = requests.post(url, headers=headers, json=payload, timeout=90)
+            if r.status_code == 200:
+                raw_text = r.json()["choices"][0]["message"]["content"]
+                sections = parse_markdown_response(raw_text)
+                return sections, f"Groq ({model_candidate})"
+            else:
+                last_error_text = f"HTTP {r.status_code}: {r.text}"
+        except Exception as e:
+            last_error_text = str(e)
+            continue
+            
+    raise Exception(f"Groq API javobi: {last_error_text}")
 
 # Big Action Button
 st.markdown("<br>", unsafe_allow_html=True)
