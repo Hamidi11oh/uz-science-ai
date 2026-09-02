@@ -9,6 +9,7 @@ from reportlab.lib import colors
 import io
 import json
 import os
+import time
 
 # Page Configuration
 st.set_page_config(
@@ -18,7 +19,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom Exact-Match Tailwind/Clean CSS
+# Custom Styling
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -27,19 +28,16 @@ st.markdown("""
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
-    /* Background */
     .stApp {
         background-color: #f8fafc;
     }
     
-    /* Container Width */
     .block-container {
         max-width: 960px !important;
         padding-top: 1.5rem !important;
         padding-bottom: 4rem !important;
     }
     
-    /* Top Header Bar */
     .top-nav {
         display: flex;
         justify-content: space-between;
@@ -85,7 +83,6 @@ st.markdown("""
         margin-left: 8px;
     }
     
-    /* Hero Section */
     .hero-container {
         text-align: center;
         margin-bottom: 28px;
@@ -113,7 +110,6 @@ st.markdown("""
         line-height: 1.55;
     }
     
-    /* Floating Main Card */
     .main-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -123,7 +119,6 @@ st.markdown("""
         margin-bottom: 24px;
     }
     
-    /* Options Box Grid */
     .option-box {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
@@ -142,7 +137,6 @@ st.markdown("""
         font-size: 0.88rem;
     }
     
-    /* Result Section Cards */
     .res-card {
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -169,7 +163,6 @@ st.markdown("""
         margin-bottom: 20px;
     }
     
-    /* Tabs Styling */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
         border-bottom: 1px solid #e2e8f0;
@@ -192,7 +185,6 @@ st.markdown("""
         border-color: #0284c7 !important;
     }
     
-    /* Primary Button */
     .stButton button {
         background: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%) !important;
         color: white !important;
@@ -270,15 +262,18 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     buffer.seek(0)
     return buffer.getvalue()
 
-# Automatic Master API Key Resolution (from Streamlit Secrets or Environment)
-MASTER_KEY = ""
+# Automatic Master API Key Resolution (Supports multiple comma-separated keys for auto-failover)
+raw_keys = []
 if "GEMINI_API_KEY" in st.secrets:
-    MASTER_KEY = st.secrets["GEMINI_API_KEY"]
-elif os.environ.get("GEMINI_API_KEY"):
-    MASTER_KEY = os.environ.get("GEMINI_API_KEY")
+    raw_keys.append(st.secrets["GEMINI_API_KEY"])
+if "GEMINI_API_KEYS" in st.secrets:
+    raw_keys.extend([k.strip() for k in st.secrets["GEMINI_API_KEYS"].split(",") if k.strip()])
+if os.environ.get("GEMINI_API_KEY"):
+    raw_keys.append(os.environ.get("GEMINI_API_KEY"))
 
 # Top Navigation Bar
-status_badge = '<span class="badge-active"><span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span> Gemini AI Faol</span>' if MASTER_KEY else '<span class="badge-active" style="background:#fffbeb; border-color:#fde68a; color:#b45309;">API Kalit kiritilmagan</span>'
+has_master_key = len(raw_keys) > 0
+status_badge = '<span class="badge-active"><span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span> Gemini AI Faol</span>' if has_master_key else '<span class="badge-active" style="background:#fffbeb; border-color:#fde68a; color:#b45309;">API Kalit kiritilmagan</span>'
 
 st.markdown(f"""
 <div class="top-nav">
@@ -302,19 +297,18 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Sidebar (Only for optional personal API key if needed)
+# Sidebar (For user-provided key or overrides)
 with st.sidebar:
     st.header("⚙️ Sozlamalar")
-    if MASTER_KEY:
-        st.success("✅ Umumiy server API kaliti faol.")
-        api_key = MASTER_KEY
-    else:
-        api_key = st.text_input(
-            "Google Gemini API Kalit:",
-            type="password",
-            help="aistudio.google.com/app/apikey sahifasidan olingan kalit"
-        )
-        st.markdown("👉 [Bepul API Kalit Olish](https://aistudio.google.com/app/apikey)")
+    user_custom_key = st.text_input(
+        "Shaxsiy Gemini API Kalit (Ixtiyoriy):",
+        type="password",
+        help="Agar server kaliti tugasa, o'z kalitingizni kiriting"
+    )
+    if user_custom_key.strip():
+        raw_keys.insert(0, user_custom_key.strip())
+        
+    st.markdown("👉 [Yangi Bepul API Kalit Olish](https://aistudio.google.com/app/apikey)")
 
 # Main Floating White Card
 st.markdown('<div class="main-card">', unsafe_allow_html=True)
@@ -386,7 +380,7 @@ with tab_paste:
         extracted_text = direct_text
         file_name = "Kiritilgan Maqola Matni"
 
-# Presets & Settings Info Grid (Exact match with design)
+# Presets & Settings Info Grid
 st.markdown("<br>", unsafe_allow_html=True)
 col_opt1, col_opt2 = st.columns(2)
 
@@ -423,15 +417,12 @@ st.markdown("<br>", unsafe_allow_html=True)
 if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_width=True):
     if not extracted_text.strip():
         st.warning("⚠️ Iltimos, oldin fayl yuklang yoki matn kiriting.")
-    elif not api_key:
-        st.error("⚠️ Tizimda API kalit topilmadi. Iltimos, chap tarafdagi menyuga Gemini API kalitingizni kiriting.")
+    elif not raw_keys:
+        st.error("⚠️ Tizimda API kalit topilmadi. Iltimos, chap tarafdagi menyuga yangi Gemini API kalitingizni kiriting.")
     else:
-        with st.spinner("✨ Google Gemini 3.6 Flash ilmiy maqolani to‘liq o‘rganmoqda va akademik tahlil qilmoqda..."):
-            try:
-                genai.configure(api_key=api_key.strip())
-                model = genai.GenerativeModel("gemini-3.6-flash")
-
-                system_prompt = """
+        with st.spinner("✨ Sun'iy intellekt ilmiy maqolani to‘liq o‘rganmoqda va akademik tahlil qilmoqda..."):
+            
+            system_prompt = """
 Siz oliy toifali akademik tarjimon, ilmiy tahrirchi va magistrlik dissertatsiyalari bo'yicha ilmiy maslahatchisisiz.
 Vazifangiz: Taqdim etilgan ilmiy maqola / akademik hujjatni quyidagi 4 ta asosiy bo'lim bo'yicha mukammal akademik o'zbek tilida tahlil qilib berish.
 
@@ -466,24 +457,69 @@ Javobni FAQAT quyidagi toza JSON formatida qaytaring (hech qanday markdown ```js
   ]
 }
 """
-                response = model.generate_content(
-                    system_prompt + "\n\nHujjat Matni:\n" + extracted_text[:28000],
-                    generation_config={"temperature": 0.2}
-                )
+            # Multi-model and Multi-key Auto-Failover
+            # If a model hits a 20-request limit, it immediately switches to other free models with 1500 limit!
+            candidate_models = [
+                "gemini-2.0-flash",
+                "gemini-1.5-flash",
+                "gemini-2.5-flash",
+                "gemini-3.6-flash",
+                "gemini-1.5-flash-8b",
+                "gemini-pro"
+            ]
 
-                raw_json = response.text.strip()
-                if raw_json.startswith("```json"):
-                    raw_json = raw_json[7:-3].strip()
-                elif raw_json.startswith("```"):
-                    raw_json = raw_json[3:-3].strip()
+            success = False
+            last_err_msg = ""
 
-                data = json.loads(raw_json)
-                st.session_state["result_data"] = data
-                st.session_state["file_title"] = file_name
-                st.success("✨ Mukammal tarjima va ilmiy tahlil to‘liq yakunlandi!")
+            for active_key in raw_keys:
+                if success:
+                    break
+                try:
+                    genai.configure(api_key=active_key)
+                    for m_name in candidate_models:
+                        try:
+                            model = genai.GenerativeModel(m_name)
+                            response = model.generate_content(
+                                system_prompt + "\n\nHujjat Matni:\n" + extracted_text[:28000],
+                                generation_config={"temperature": 0.2}
+                            )
 
-            except Exception as err:
-                st.error(f"Xatolik yuz berdi: {err}")
+                            if response and response.text:
+                                raw_json = response.text.strip()
+                                if raw_json.startswith("```json"):
+                                    raw_json = raw_json[7:-3].strip()
+                                elif raw_json.startswith("```"):
+                                    raw_json = raw_json[3:-3].strip()
+
+                                data = json.loads(raw_json)
+                                st.session_state["result_data"] = data
+                                st.session_state["file_title"] = file_name
+                                st.session_state["used_model"] = m_name
+                                success = True
+                                break
+                        except Exception as m_err:
+                            err_str = str(m_err)
+                            last_err_msg = err_str
+                            # If 429 quota or 404, silently fallback to next model in list
+                            continue
+                except Exception as key_err:
+                    last_err_msg = str(key_err)
+                    continue
+
+            if success:
+                st.success(f"✨ Mukammal tarjima va ilmiy tahlil to‘liq yakunlandi! (Model: {st.session_state.get('used_model', 'Gemini')})")
+            else:
+                st.error(f"Xatolik yuz berdi: {last_err_msg}")
+                if "429" in last_err_msg or "quota" in last_err_msg.lower():
+                    st.info("""
+                    💡 **Muammo sababi va yechimi:**
+                    Google AI Studio-da ushbu API kalit bog'langan loyihada kunlik bepul limit tugagan.
+                    
+                    **Yechim (30 soniya):**
+                    1. [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) sahifasiga kiring.
+                    2. **'Create API key in NEW project'** tugmasini bosing (yangi loyihada ochilgan kalitga yana yangi kunlik bepul limit beriladi).
+                    3. Yangi kalitni Streamlit **Secrets** bo'limiga qo'ying yoki chap tarafdagi menyuga kiritib ishlating.
+                    """)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -496,7 +532,6 @@ if "result_data" in st.session_state:
     full_trans = data.get("full_translation", "")
     current_title = st.session_state.get("file_title", "Ilmiy Maqola")
 
-    # Download Buttons Card
     st.markdown(f"""
     <div class="res-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%); border-color: #bae6fd;">
         <div>
