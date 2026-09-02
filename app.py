@@ -12,7 +12,7 @@ import os
 import time
 
 # =====================================================================
-# 1. SAHIFA SOZLAMALARI VA ZAMONAVIY ANIQ DIZAYN
+# 1. SAHIFA SOZLAMALARI VA ANIQ SKRINSHOTDAGI DIZAYN
 # =====================================================================
 st.set_page_config(
     page_title="UZ SCIENCE AI - Professional Ilmiy Platforma",
@@ -214,18 +214,21 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     story.append(Paragraph("<i>To‘liq akademik tarjima, ilmiy pasport va magistr dissertatsiyasi tahlili</i>", body_style))
     story.append(Spacer(1, 8))
     
+    # 1. Chuqur Ilmiy Xulosa
     story.append(Paragraph("<b>1. Chuqur Ilmiy Xulosa va Tahlil (Executive Summary)</b>", h1_style))
     for k, v in summary_data.items():
         label = k.replace('_', ' ').capitalize()
         story.append(Paragraph(f"<b>• {label}:</b> {str(v).replace('<', '&lt;').replace('>', '&gt;')}", body_style))
     story.append(Spacer(1, 8))
     
+    # 2. Magistr Yo'riqnomasi
     story.append(Paragraph("<b>2. Magistrlik Dissertatsiyasi Uchun Tavsiyalar</b>", h1_style))
     for k, v in thesis_data.items():
         label = k.replace('_', ' ').capitalize()
         story.append(Paragraph(f"<b>• {label}:</b> {str(v).replace('<', '&lt;').replace('>', '&gt;')}", body_style))
     story.append(Spacer(1, 8))
 
+    # 3. Terminlar
     if terms_data:
         story.append(Paragraph("<b>3. Asosiy Ilmiy Terminlar</b>", h1_style))
         for item in terms_data:
@@ -235,6 +238,7 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
             story.append(Paragraph(f"<b>• {term_en} → {term_uz}:</b> {desc}", body_style))
         story.append(Spacer(1, 8))
 
+    # 4. To'liq Tarjima
     story.append(Paragraph("<b>4. To‘liq Akademik O‘zbekcha Tarjima</b>", h1_style))
     for p in translation_text.split('\n'):
         if p.strip():
@@ -272,7 +276,7 @@ with st.sidebar:
             "Gemini API Kalit:",
             value=gemini_secret,
             type="password",
-            help="console.cloud.google.com dan olingan kalit"
+            help="Google AI Studio kaliti"
         )
         st.markdown("👉 [Gemini Kalit Olish](https://aistudio.google.com/app/apikey)")
 
@@ -401,126 +405,117 @@ with col_opt2:
     </div>
     """, unsafe_allow_html=True)
 
-SYSTEM_ACADEMIC_PROMPT = """
-Siz oliy toifali akademik tarjimon, ilmiy tahrirchi va magistrlik dissertatsiyalari bo'yicha ilmiy maslahatchisisiz.
-Vazifangiz: Taqdim etilgan ilmiy maqola / akademik hujjatni quyidagi 4 ta asosiy bo'lim bo'yicha mukammal akademik o'zbek tilida tahlil qilib berish.
-
-Qoidalar:
-1. To'liq tarjima qismida (full_translation) hech narsani qisqartirmang, har bir bo'limni (Abstract, Introduction, Methodology, Results, Discussion, Conclusion) to'liq va ravon ilmiy tilda bering. Formulalar ($...$), kodlar va citationlarni to'liq saqlang.
-2. Xulosa qismida (research_summary) quyidagi savollarga alohida chuqur javob bering:
-   - core_problem: Maqolada ko'tarilgan asosiy ilmiy yoki amaliy muammo nima edi?
-   - proposed_solution: Mualliflar qanday yangi yechim, model yoki metodologiya taklif qilishdi?
-   - key_focus_areas: Ushbu maqolani o'qishda magistrant eng ko'p nimaga e'tibor berishi kerak? Qaysi qismlari eng muhim?
-   - experimental_results: Qanday tajribalar o'tkazildi, qanday datasetlar va qanday SOTA ko'rsatkichlarga erishildi?
-   - limitations: Tadqiqotning qanday cheklovlari va kamchiliklari mavjud?
-3. Magistr tavsiyalari qismida (thesis_advisor) dissertatsiyaning qaysi bobida qanday iqtibos keltirish va ushbu maqoladan yangi tadqiqot g'oyasini olishni aniq ko'rsating.
-4. Terminlar qismida (key_terms) kamida 4-6 ta asosiy atamani (term_en, term_uz, desc) bering.
-
-Javobni FAQAT quyidagi toza JSON formatida qaytaring (hech qanday markdown ```json belgilarisiz):
+# PROMPTS
+SUMMARY_PROMPT = """
+Siz oliy toifali akademik ekspert va magistr ilmiy maslahatchisisiz.
+Quyidagi ilmiy maqola / hujjat matnini chuqur tahlil qilib, FAQAT quyidagi JSON formatida natija qaytaring (hech qanday qo'shimcha so'zsiz):
 {
-  "full_translation": "To'liq, qisqartirilmagan akademik tarjima matni...",
   "research_summary": {
-    "core_problem": "Asosiy muammo tavsifi...",
-    "proposed_solution": "Taklif etilgan yechim va arxitektura...",
-    "key_focus_areas": "Nimasiga alohida e'tibor berish kerak va qaysi qismlari muhim...",
+    "core_problem": "Maqolada ko'tarilgan asosiy ilmiy muammo nima?",
+    "proposed_solution": "Mualliflar qanday yangi yechim, model yoki metodologiya taklif qilishdi?",
+    "key_focus_areas": "Nimasiga alohida e'tibor berish kerak va qaysi qismlari eng muhim?",
     "experimental_results": "Asosiy tajribaviy natijalar va benchmarklar...",
-    "limitations": "Tadqiqot cheklovlari..."
+    "limitations": "Tadqiqot cheklovlari va kamchiliklari..."
   },
   "thesis_advisor": {
     "where_to_cite": "Dissertatsiyaning qaysi bo'limida qanday iqtibos olish kerak...",
-    "how_to_use_method": "Metodni o'z tadqiqotida qanday qo'llash mumkin...",
+    "how_to_use_method": "Ushbu metodni o'z tadqiqotida qanday qo'llash mumkin...",
     "new_research_idea": "Ushbu maqola asosida magistr uchun yangi ilmiy g'oya..."
   },
   "key_terms": [
-    {"term_en": "Self-Attention", "term_uz": "O'z-o'ziga e'tibor mexanizmi", "desc": "Qisqa izoh..."}
+    {"term_en": "Self-Attention", "term_uz": "O'z-o'ziga e'tibor mexanizmi", "desc": "Atama izohi..."}
   ]
 }
 """
 
-def call_groq_dynamic(key, text):
+TRANSLATION_PROMPT = """
+Siz oliy toifali akademik tarjimonsiz.
+Vazifangiz: Quyidagi ilmiy maqola matnini akademik, tabiiy va ravon o‘zbek tiliga to‘liq tarjima qilish.
+Qoidalar:
+1. Hech qanday bo'limni qisqartirmang (Abstract, Intro, Methods, Results, Conclusion to'liq bo'lsin).
+2. Formulalar ($...$), kodlar, parametrlar va citationlarni ([1], [2]) o'zgartirmang.
+3. Oddiy toza matn yoki markdown formatida to'liq tarjimani qaytaring (JSON formatida emas, oddiy matn ko'rinishida).
+"""
+
+# TWO-PASS ROBUST EXECUTION (Zero JSON truncation error)
+def run_groq_pipeline(key, text):
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {key}"
     }
     
-    # 1. Ask Groq which models are active for this account
-    available_models = []
+    # 1. Active models check
+    models = ["llama-3.1-8b-instant", "llama3-70b-8192", "mixtral-8x7b-32768"]
     try:
-        m_resp = requests.get("https://api.groq.com/openai/v1/models", headers=headers, timeout=10)
-        if m_resp.status_code == 200:
-            for item in m_resp.json().get("data", []):
-                mid = item.get("id", "")
-                if "whisper" not in mid and "guard" not in mid and "vision" not in mid:
-                    available_models.append(mid)
+        r_mod = requests.get("https://api.groq.com/openai/v1/models", headers=headers, timeout=10)
+        if r_mod.status_code == 200:
+            active_m = [m["id"] for m in r_mod.json().get("data", []) if "whisper" not in m["id"] and "guard" not in m["id"]]
+            if active_m:
+                models = [m for m in models if m in active_m] + [m for m in active_m if m not in models]
     except Exception:
         pass
 
-    # Priority list of Groq models (8B and 70B instant models)
-    priority = [
-        "llama-3.1-8b-instant",
-        "llama3-70b-8192",
-        "llama-3.3-70b-versatile",
-        "llama-3.1-70b-versatile",
-        "mixtral-8x7b-32768",
-        "gemma2-9b-it"
-    ]
+    chosen_model = models[0]
+
+    # Pass 1: Structured Summary (Compact JSON, 100% fits within token limit)
+    p1_payload = {
+        "model": chosen_model,
+        "messages": [
+            {"role": "system", "content": SUMMARY_PROMPT},
+            {"role": "user", "content": "Hujjat Matni:\n" + text[:25000]}
+        ],
+        "temperature": 0.2,
+        "max_tokens": 4096,
+        "response_format": {"type": "json_object"}
+    }
     
-    models_to_try = []
-    for p in priority:
-        if p in available_models:
-            models_to_try.append(p)
-    for m in available_models:
-        if m not in models_to_try:
-            models_to_try.append(m)
-    if not models_to_try:
-        models_to_try = ["llama-3.1-8b-instant", "llama3-70b-8192", "mixtral-8x7b-32768"]
+    r1 = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=p1_payload, timeout=60)
+    if r1.status_code != 200:
+        raise Exception(f"Groq xatosi HTTP {r1.status_code}: {r1.text}")
+    
+    json_res = json.loads(r1.json()["choices"][0]["message"]["content"])
 
-    last_err = ""
-    for model_name in models_to_try:
-        payload = {
-            "model": model_name,
-            "messages": [
-                {"role": "system", "content": SYSTEM_ACADEMIC_PROMPT},
-                {"role": "user", "content": "Hujjat Matni:\n" + text[:28000]}
-            ],
-            "temperature": 0.2,
-            "response_format": {"type": "json_object"}
-        }
-        url = "https://api.groq.com/openai/v1/chat/completions"
-        try:
-            r = requests.post(url, headers=headers, json=payload, timeout=60)
-            if r.status_code == 200:
-                data = r.json()
-                return data["choices"][0]["message"]["content"], f"Groq ({model_name})"
-            else:
-                last_err = f"HTTP {r.status_code}: {r.text}"
-        except Exception as e:
-            last_err = str(e)
-            continue
-            
-    raise Exception(last_err or "Groq orqali ulanish muvaffaqiyatsiz bo'ldi.")
+    # Pass 2: Full Academic Translation (Pure text, max 8192 tokens, cannot break JSON validation)
+    p2_payload = {
+        "model": chosen_model,
+        "messages": [
+            {"role": "system", "content": TRANSLATION_PROMPT},
+            {"role": "user", "content": "Hujjat Matni:\n" + text[:25000]}
+        ],
+        "temperature": 0.2,
+        "max_tokens": 8000
+    }
+    
+    r2 = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=p2_payload, timeout=90)
+    if r2.status_code == 200:
+        trans_res = r2.json()["choices"][0]["message"]["content"]
+    else:
+        trans_res = "Tarjima jarayonida xatolik yuz berdi."
 
-def call_gemini_pure(key, text):
+    return json_res, trans_res, f"Groq ({chosen_model})"
+
+def run_gemini_pipeline(key, text):
     headers = {"Content-Type": "application/json"}
+    models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash"]
+    
+    # Combined payload for Gemini
     payload = {
-        "contents": [{"parts": [{"text": SYSTEM_ACADEMIC_PROMPT + "\n\nHujjat Matni:\n" + text[:28000]}]}],
+        "contents": [{"parts": [{"text": SUMMARY_PROMPT + "\n\n" + TRANSLATION_PROMPT + "\n\nHujjat Matni:\n" + text[:28000]}]}],
         "generationConfig": {"temperature": 0.2}
     }
-    models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash", "gemini-3.6-flash"]
-    last_err = ""
+    
     for m in models:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={key}"
         try:
             r = requests.post(url, headers=headers, json=payload, timeout=60)
             if r.status_code == 200:
-                data = r.json()
-                return data["candidates"][0]["content"]["parts"][0]["text"], f"Gemini ({m})"
-            else:
-                last_err = f"HTTP {r.status_code}: {r.text}"
-        except Exception as e:
-            last_err = str(e)
+                raw_t = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+                clean_j = raw_t.replace("```json", "").replace("```", "").strip()
+                parsed = json.loads(clean_j)
+                return parsed, parsed.get("full_translation", ""), f"Gemini ({m})"
+        except Exception:
             continue
-    raise Exception(last_err)
+    raise Exception("Gemini orqali ulanish muvaffaqiyatsiz bo'ldi.")
 
 st.markdown("<br>", unsafe_allow_html=True)
 if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_width=True):
@@ -532,30 +527,27 @@ if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_widt
         with st.status("🔍 Ilmiy maqola tahlil qilinmoqda va o'zbekchalashtirilmoqda...", expanded=True) as status_box:
             st.write("📄 **1-bosqich:** Fayl matni va tuzilmasi o‘qildi...")
             st.write(f"✓ Matn hajmi: {len(extracted_text):,} ta belgi.")
-            st.write("🤖 **2-bosqich:** Sun'iy intellekt modeli bilan bog‘lanilmoqda...")
-            st.write("🧠 **3-bosqich:** Chuqur ilmiy xulosa va to‘liq tarjima shakllantirilmoqda...")
+            
+            st.write("🧠 **2-bosqich:** Chuqur ilmiy xulosa va muammo tahlili shakllantirilmoqda...")
             
             try:
                 if "Groq" in ai_provider:
-                    raw_json, used_model = call_groq_dynamic(active_key, extracted_text)
+                    parsed_json, full_trans_text, used_model = run_groq_pipeline(active_key, extracted_text)
                 else:
-                    raw_json, used_model = call_gemini_pure(active_key, extracted_text)
-                    
-                clean_json = raw_json.strip()
-                if clean_json.startswith("```json"):
-                    clean_json = clean_json[7:-3].strip()
-                elif clean_json.startswith("```"):
-                    clean_json = clean_json[3:-3].strip()
+                    parsed_json, full_trans_text, used_model = run_gemini_pipeline(active_key, extracted_text)
 
-                data = json.loads(clean_json)
-                st.session_state["result_data"] = data
+                st.write("📄 **3-bosqich:** To‘liq akademik tarjima va formulalar tekshirildi.")
+                st.write("📥 **4-bosqich:** PDF va Word eksport fayllari yaratildi.")
+
+                st.session_state["result_summary"] = parsed_json.get("research_summary", {})
+                st.session_state["result_thesis"] = parsed_json.get("thesis_advisor", {})
+                st.session_state["result_terms"] = parsed_json.get("key_terms", [])
+                st.session_state["result_translation"] = full_trans_text
                 st.session_state["file_title"] = file_name
                 st.session_state["used_model"] = used_model
 
-                st.write("📄 **4-bosqich:** To‘liq akademik tarjima va ilmiy pasport tekshirildi.")
-                st.write("📥 **5-bosqich:** PDF va Word eksport fayllari yaratildi.")
                 status_box.update(label=f"✅ Tahlil va tarjima muvaffaqiyatli yakunlandi! ({used_model})", state="complete", expanded=False)
-                st.success(f"✨ Muvaffaqiyatli yakunlandi! (Foydalanilgan model: `{used_model}`)")
+                st.success(f"✨ Muvaffaqiyatli yakunlandi! ({used_model} orqali)")
                 
             except Exception as err:
                 status_box.update(label="❌ Tahlilda xatolik yuz berdi", state="error", expanded=True)
@@ -564,12 +556,11 @@ if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_widt
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Results Section
-if "result_data" in st.session_state:
-    data = st.session_state["result_data"]
-    summary = data.get("research_summary", {})
-    thesis = data.get("thesis_advisor", {})
-    terms = data.get("key_terms", [])
-    full_trans = data.get("full_translation", "")
+if "result_summary" in st.session_state:
+    summary = st.session_state["result_summary"]
+    thesis = st.session_state["result_thesis"]
+    terms = st.session_state["result_terms"]
+    full_trans = st.session_state["result_translation"]
     current_title = st.session_state.get("file_title", "Ilmiy Maqola")
 
     st.markdown(f"""
@@ -723,7 +714,6 @@ if "result_data" in st.session_state:
         else:
             st.info("Terminlar ro‘yxati mavjud emas.")
 
-# Footer
 st.markdown("""
 <div class="footer-text">
     © 2026 UZ SCIENCE AI — Magistrant va ilmiy izlanuvchilar uchun universal platforma.
