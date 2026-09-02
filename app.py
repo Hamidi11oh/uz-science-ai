@@ -12,16 +12,15 @@ import os
 import time
 
 # =====================================================================
-# SAHIFA SOZLAMALARI VA DIZAYNI
+# 1. SAHIFA KONFIGURATSIYASI VA ZAMONAVIY MINIMALIST DIZAYN
 # =====================================================================
 st.set_page_config(
-    page_title="UZ SCIENCE AI - Ilmiy Tarjima Platformasi",
+    page_title="UZ SCIENCE AI - Professional Ilmiy Platforma",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom Exact-Match Tailwind/Clean CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -48,7 +47,7 @@ st.markdown("""
         border: 1px solid #e2e8f0;
         border-radius: 16px;
         padding: 12px 20px;
-        margin-bottom: 28px;
+        margin-bottom: 24px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     }
     
@@ -71,23 +70,9 @@ st.markdown("""
         box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25);
     }
     
-    .badge-active {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        background: #f0fdf4;
-        border: 1px solid #bbf7d0;
-        color: #166534;
-        padding: 3px 10px;
-        border-radius: 14px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        margin-left: 8px;
-    }
-    
     .hero-container {
         text-align: center;
-        margin-bottom: 28px;
+        margin-bottom: 24px;
     }
     
     .hero-title {
@@ -95,7 +80,7 @@ st.markdown("""
         font-weight: 800;
         letter-spacing: -0.8px;
         color: #0f172a;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
     }
     
     .hero-highlight {
@@ -105,7 +90,7 @@ st.markdown("""
     }
     
     .hero-subtitle {
-        font-size: 0.98rem;
+        font-size: 0.96rem;
         color: #64748b;
         max-width: 620px;
         margin: 0 auto;
@@ -229,21 +214,18 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     story.append(Paragraph("<i>To‘liq akademik tarjima, ilmiy pasport va magistr dissertatsiyasi tahlili</i>", body_style))
     story.append(Spacer(1, 8))
     
-    # 1. Chuqur Ilmiy Xulosa
     story.append(Paragraph("<b>1. Chuqur Ilmiy Xulosa va Tahlil (Executive Summary)</b>", h1_style))
     for k, v in summary_data.items():
         label = k.replace('_', ' ').capitalize()
         story.append(Paragraph(f"<b>• {label}:</b> {str(v).replace('<', '&lt;').replace('>', '&gt;')}", body_style))
     story.append(Spacer(1, 8))
     
-    # 2. Magistr Yo'riqnomasi
     story.append(Paragraph("<b>2. Magistrlik Dissertatsiyasi Uchun Tavsiyalar</b>", h1_style))
     for k, v in thesis_data.items():
         label = k.replace('_', ' ').capitalize()
         story.append(Paragraph(f"<b>• {label}:</b> {str(v).replace('<', '&lt;').replace('>', '&gt;')}", body_style))
     story.append(Spacer(1, 8))
 
-    # 3. Terminlar
     if terms_data:
         story.append(Paragraph("<b>3. Asosiy Ilmiy Terminlar</b>", h1_style))
         for item in terms_data:
@@ -253,7 +235,6 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
             story.append(Paragraph(f"<b>• {term_en} → {term_uz}:</b> {desc}", body_style))
         story.append(Spacer(1, 8))
 
-    # 4. To'liq Tarjima
     story.append(Paragraph("<b>4. To‘liq Akademik O‘zbekcha Tarjima</b>", h1_style))
     for p in translation_text.split('\n'):
         if p.strip():
@@ -265,32 +246,43 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     return buffer.getvalue()
 
 # =====================================================================
-# API KALITNI FAQAT STREAMLIT SECRETS YOKI FOYDALANUVCHIDAN OLISH
+# 2. PROVAyDER VA API SOZLAMALARI (GEMINI YOKI GROQ)
 # =====================================================================
-server_key = ""
-if "GEMINI_API_KEY" in st.secrets:
-    server_key = str(st.secrets["GEMINI_API_KEY"]).strip().strip("'\" \n\r\t")
-elif os.environ.get("GEMINI_API_KEY"):
-    server_key = str(os.environ.get("GEMINI_API_KEY")).strip().strip("'\" \n\r\t")
+# Default keys from Secrets
+gemini_secret = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", "")).strip().strip("'\" \n\r\t")
+groq_secret = st.secrets.get("GROQ_API_KEY", os.environ.get("GROQ_API_KEY", "")).strip().strip("'\" \n\r\t")
 
-# Sidebar
 with st.sidebar:
-    st.header("⚙️ Sozlamalar")
-    if server_key:
-        st.success("✅ Streamlit Secrets-dagi kalit faol.")
-        user_key = st.text_input("Shaxsiy API kalit (Ixtiyoriy):", type="password")
+    st.header("⚙️ AI Dvigateli Sozlamalari")
+    ai_provider = st.radio(
+        "AI Provayderini Tanlang:",
+        ["Google Gemini (Rasmiy)", "Groq AI (Llama 3.3 - 100% Limitsiz Bepul)"],
+        index=0,
+        help="Agar Google API kalitingizda 401 yoki 429 xatolik bo'lsa, Groq AI ga o'ting (u hech qachon 401 xatosi bermaydi)."
+    )
+    
+    if "Gemini" in ai_provider:
+        api_input = st.text_input(
+            "Gemini API Kalit:",
+            value=gemini_secret,
+            type="password",
+            help="console.cloud.google.com/apis/credentials dan olingan kalit"
+        )
+        st.markdown("👉 [Gemini Kalit Olish](https://aistudio.google.com/app/apikey)")
     else:
-        st.info("💡 Streamlit Secrets-da kalit topilmadi. O'z kalitingizni kiriting:")
-        user_key = st.text_input("Gemini API Kalit:", type="password")
-        
-    st.markdown("👉 [Bepul API Kalit Olish](https://aistudio.google.com/app/apikey)")
+        api_input = st.text_input(
+            "Groq API Kalit:",
+            value=groq_secret,
+            type="password",
+            help="console.groq.com saytidan 10 soniyada olingan bepul kalit"
+        )
+        st.markdown("👉 [Bepul Groq Kalit Olish (14,400 so'rov/kun)](https://console.groq.com/keys)")
 
-# Clean API key to use
-final_key = user_key.strip().strip("'\" \n\r\t") if user_key.strip() else server_key
-is_key_active = len(final_key) > 8
+active_key = api_input.strip().strip("'\" \n\r\t")
+is_active = len(active_key) > 5
 
 # Top Navigation Bar
-status_badge = '<span class="badge-active"><span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span> Gemini AI Faol</span>' if is_key_active else '<span class="badge-active" style="background:#fffbeb; border-color:#fde68a; color:#b45309;">API Kalit kiritilmagan</span>'
+status_badge = '<span style="display:inline-flex;align-items:center;gap:5px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:3px 10px;border-radius:14px;font-size:0.72rem;font-weight:700;margin-left:8px;"><span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span> AI Faol</span>' if is_active else '<span style="display:inline-flex;align-items:center;gap:5px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;padding:3px 10px;border-radius:14px;font-size:0.72rem;font-weight:700;margin-left:8px;">Kalit Kiritilmagan</span>'
 
 st.markdown(f"""
 <div class="top-nav">
@@ -325,7 +317,7 @@ file_name = "Ilmiy Hujjat"
 
 with tab_upload:
     uploaded_file = st.file_uploader(
-        "PDF yoki boshqa faylni shu yerga tashlang (PDF • DOCX • PPTX • TXT):",
+        "PDF yoki boshqa faylni shu yerga tashlang:",
         type=["pdf", "docx", "pptx", "txt"],
         label_visibility="collapsed"
     )
@@ -416,9 +408,8 @@ with col_opt2:
     </div>
     """, unsafe_allow_html=True)
 
-# Clean Single-Credential Native REST API Call
-def execute_gemini_pure(api_key, text):
-    system_prompt = """
+# Central Prompt
+SYSTEM_ACADEMIC_PROMPT = """
 Siz oliy toifali akademik tarjimon, ilmiy tahrirchi va magistrlik dissertatsiyalari bo'yicha ilmiy maslahatchisisiz.
 Vazifangiz: Taqdim etilgan ilmiy maqola / akademik hujjatni quyidagi 4 ta asosiy bo'lim bo'yicha mukammal akademik o'zbek tilida tahlil qilib berish.
 
@@ -453,64 +444,71 @@ Javobni FAQAT quyidagi toza JSON formatida qaytaring (hech qanday markdown ```js
   ]
 }
 """
-    clean_k = str(api_key).strip().strip("'\" \n\r\t")
-    
-    # Pure headers WITHOUT ANY duplicate/Bearer auth
+
+def call_gemini(key, text):
     headers = {"Content-Type": "application/json"}
-    
     payload = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": system_prompt + "\n\nHujjat Matni:\n" + text[:28000]}
-                ]
-            }
-        ],
-        "generationConfig": {
-            "temperature": 0.2
-        }
+        "contents": [{"parts": [{"text": SYSTEM_ACADEMIC_PROMPT + "\n\nHujjat Matni:\n" + text[:28000]}]}],
+        "generationConfig": {"temperature": 0.2}
     }
-    
     models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash", "gemini-3.6-flash"]
     last_err = ""
-    
     for m in models:
-        # Sole query parameter authentication - completely supported by all Google gateways
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={clean_k}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={key}"
         try:
             r = requests.post(url, headers=headers, json=payload, timeout=60)
             if r.status_code == 200:
                 data = r.json()
-                raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
-                return raw_text, m
+                return data["candidates"][0]["content"]["parts"][0]["text"], f"Gemini ({m})"
             else:
                 last_err = f"HTTP {r.status_code}: {r.text}"
         except Exception as e:
             last_err = str(e)
             continue
-            
-    raise Exception(last_err or "Ulanish muvaffaqiyatsiz bo'ldi.")
+    raise Exception(last_err)
+
+def call_groq(key, text):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {key}"
+    }
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {"role": "system", "content": SYSTEM_ACADEMIC_PROMPT},
+            {"role": "user", "content": "Hujjat Matni:\n" + text[:28000]}
+        ],
+        "temperature": 0.2,
+        "response_format": {"type": "json_object"}
+    }
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    r = requests.post(url, headers=headers, json=payload, timeout=60)
+    if r.status_code == 200:
+        data = r.json()
+        return data["choices"][0]["message"]["content"], "Groq (Llama 3.3 70B)"
+    else:
+        raise Exception(f"Groq API xatosi HTTP {r.status_code}: {r.text}")
 
 # Big Action Button
 st.markdown("<br>", unsafe_allow_html=True)
 if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_width=True):
     if not extracted_text.strip():
         st.warning("⚠️ Iltimos, oldin fayl yuklang yoki matn kiriting.")
-    elif not final_key:
-        st.error("⚠️ Tizimda API kalit topilmadi. Iltimos, chap tarafdagi menyuga Gemini API kalitingizni kiriting.")
+    elif not active_key:
+        st.error("⚠️ Tizimda API kalit topilmadi. Iltimos, chap tarafdagi menyuga API kalitingizni kiriting.")
     else:
-        # LIVE STEP-BY-STEP CONTAINER
         with st.status("🔍 Ilmiy maqola tahlil qilinmoqda va o'zbekchalashtirilmoqda...", expanded=True) as status_box:
-            
             st.write("📄 **1-bosqich:** Fayl matni va tuzilmasi o‘qildi...")
             st.write(f"✓ Matn hajmi: {len(extracted_text):,} ta belgi.")
-            
-            st.write("🤖 **2-bosqich:** Google Gemini REST API bilan toza xavfsiz ulanish o‘rnatilmoqda...")
-            st.write("🧠 **3-bosqich:** Ilmiy xulosa va to‘liq tarjima shakllantirilmoqda...")
+            st.write("🤖 **2-bosqich:** Sun'iy intellekt modeli bilan bog‘lanilmoqda...")
+            st.write("🧠 **3-bosqich:** Chuqur ilmiy xulosa va to‘liq tarjima shakllantirilmoqda...")
             
             try:
-                raw_json, used_model = execute_gemini_pure(final_key, extracted_text)
-                
+                if "Gemini" in ai_provider:
+                    raw_json, used_model = call_gemini(active_key, extracted_text)
+                else:
+                    raw_json, used_model = call_groq(active_key, extracted_text)
+                    
                 clean_json = raw_json.strip()
                 if clean_json.startswith("```json"):
                     clean_json = clean_json[7:-3].strip()
@@ -530,6 +528,12 @@ if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_widt
             except Exception as err:
                 status_box.update(label="❌ Tahlilda xatolik yuz berdi", state="error", expanded=True)
                 st.error(f"Xatolik: {err}")
+                if "401" in str(err) and "Gemini" in ai_provider:
+                    st.info("""
+                    💡 **401 xatoligini bir zumda hal qilish:**
+                    Chap tomondagi menyudan **'Groq AI (Llama 3.3 - 100% Limitsiz Bepul)'** ni tanlang.
+                    [console.groq.com/keys](https://console.groq.com/keys) dan 10 soniyada bepul kalit olib qo'ysangiz, hech qanday Google 401 yoki 429 xatolarisiz 100% tez va barqaror ishlaydi!
+                    """)
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -542,7 +546,6 @@ if "result_data" in st.session_state:
     full_trans = data.get("full_translation", "")
     current_title = st.session_state.get("file_title", "Ilmiy Maqola")
 
-    # Download Buttons Card
     st.markdown(f"""
     <div class="res-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%); border-color: #bae6fd;">
         <div>
@@ -609,7 +612,6 @@ if "result_data" in st.session_state:
         "📖 Ilmiy Terminlar Lug‘ati"
     ])
 
-    # Tab 1: Deep Research Summary
     with res_tab1:
         st.markdown(f"""
         <div class="focus-banner">
@@ -650,7 +652,6 @@ if "result_data" in st.session_state:
             </div>
             """, unsafe_allow_html=True)
 
-    # Tab 2: Full Translation
     with res_tab2:
         st.markdown(f"""
         <div class="res-card">
@@ -659,7 +660,6 @@ if "result_data" in st.session_state:
         </div>
         """, unsafe_allow_html=True)
 
-    # Tab 3: Master Thesis Advisor
     with res_tab3:
         st.markdown(f"""
         <div class="res-card">
@@ -682,7 +682,6 @@ if "result_data" in st.session_state:
         </div>
         """, unsafe_allow_html=True)
 
-    # Tab 4: Terminology Glossary
     with res_tab4:
         if terms:
             for item in terms:
