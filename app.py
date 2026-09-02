@@ -12,10 +12,24 @@ import os
 import time
 
 # =====================================================================
-# 1. SAHIFA SOZLAMALARI VA ANIQ SKRINSHOTDAGI DIZAYN
+# 👤 MUALLIF VA ASOSIY SOZLAMALAR (BU YERGA O'ZINGIZNING MA'LUMOTLARINGIZNI YOZING):
+# =====================================================================
+AUTHOR_NAME = "Qosimjonov Hamidullo"  # Ekranning chekkasida ko'rinib turadigan ismingiz
+
+# Groq API kalitni shu yerga 1 marta yozib qo'yishingiz mumkin (yoki Streamlit Secrets-ga):
+BUILTIN_GROQ_KEY = ""
+
+if not BUILTIN_GROQ_KEY:
+    if "GROQ_API_KEY" in st.secrets:
+        BUILTIN_GROQ_KEY = str(st.secrets["GROQ_API_KEY"]).strip().strip("'\" \n\r\t")
+    elif os.environ.get("GROQ_API_KEY"):
+        BUILTIN_GROQ_KEY = str(os.environ.get("GROQ_API_KEY")).strip().strip("'\" \n\r\t")
+
+# =====================================================================
+# SAHIFA SOZLAMALARI VA ELEGANT DIZAYN
 # =====================================================================
 st.set_page_config(
-    page_title="UZ SCIENCE AI - Professional Ilmiy Platforma",
+    page_title="UZ SCIENCE AI - Ilmiy Tarjima Platformasi",
     page_icon="🎓",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -46,7 +60,7 @@ st.markdown("""
         background: #ffffff;
         border: 1px solid #e2e8f0;
         border-radius: 16px;
-        padding: 12px 20px;
+        padding: 12px 22px;
         margin-bottom: 24px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.03);
     }
@@ -68,6 +82,20 @@ st.markdown("""
         color: white;
         font-size: 1.2rem;
         box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25);
+    }
+    
+    .badge-author {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%);
+        border: 1px solid #bae6fd;
+        color: #0369a1;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        box-shadow: 0 2px 5px rgba(2, 132, 199, 0.08);
     }
     
     .hero-container {
@@ -189,11 +217,13 @@ st.markdown("""
         box-shadow: 0 14px 25px -3px rgba(2, 132, 199, 0.45) !important;
     }
     
-    .footer-text {
+    .footer-container {
         text-align: center;
-        font-size: 0.78rem;
-        color: #94a3b8;
-        margin-top: 36px;
+        padding-top: 24px;
+        border-top: 1px solid #e2e8f0;
+        margin-top: 40px;
+        font-size: 0.85rem;
+        color: #64748b;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -211,24 +241,21 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     story = []
     clean_title = str(title).replace('<', '&lt;').replace('>', '&gt;')
     story.append(Paragraph(f"<b>UZ SCIENCE AI — {clean_title}</b>", title_style))
-    story.append(Paragraph("<i>To‘liq akademik tarjima, ilmiy pasport va magistr dissertatsiyasi tahlili</i>", body_style))
+    story.append(Paragraph(f"<i>Muallif: {AUTHOR_NAME} · To‘liq akademik tarjima va magistr tahlili</i>", body_style))
     story.append(Spacer(1, 8))
     
-    # 1. Chuqur Ilmiy Xulosa
     story.append(Paragraph("<b>1. Chuqur Ilmiy Xulosa va Tahlil (Executive Summary)</b>", h1_style))
     for k, v in summary_data.items():
         label = k.replace('_', ' ').capitalize()
         story.append(Paragraph(f"<b>• {label}:</b> {str(v).replace('<', '&lt;').replace('>', '&gt;')}", body_style))
     story.append(Spacer(1, 8))
     
-    # 2. Magistr Yo'riqnomasi
     story.append(Paragraph("<b>2. Magistrlik Dissertatsiyasi Uchun Tavsiyalar</b>", h1_style))
     for k, v in thesis_data.items():
         label = k.replace('_', ' ').capitalize()
         story.append(Paragraph(f"<b>• {label}:</b> {str(v).replace('<', '&lt;').replace('>', '&gt;')}", body_style))
     story.append(Spacer(1, 8))
 
-    # 3. Terminlar
     if terms_data:
         story.append(Paragraph("<b>3. Asosiy Ilmiy Terminlar</b>", h1_style))
         for item in terms_data:
@@ -238,7 +265,6 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
             story.append(Paragraph(f"<b>• {term_en} → {term_uz}:</b> {desc}", body_style))
         story.append(Spacer(1, 8))
 
-    # 4. To'liq Tarjima
     story.append(Paragraph("<b>4. To‘liq Akademik O‘zbekcha Tarjima</b>", h1_style))
     for p in translation_text.split('\n'):
         if p.strip():
@@ -249,56 +275,41 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     buffer.seek(0)
     return buffer.getvalue()
 
-# =====================================================================
-# 2. PROVAYDER VA KALITLAR (SECRETS VA INPUT)
-# =====================================================================
-groq_secret = st.secrets.get("GROQ_API_KEY", os.environ.get("GROQ_API_KEY", "")).strip().strip("'\" \n\r\t")
-gemini_secret = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", "")).strip().strip("'\" \n\r\t")
+# Active Key resolution
+active_groq_key = BUILTIN_GROQ_KEY.strip()
 
+# Sidebar (Only for optional personal API key if needed)
 with st.sidebar:
-    st.header("⚙️ Dvigatel Sozlamalari")
-    ai_provider = st.radio(
-        "AI Provayderini Tanlang:",
-        ["Groq AI (Llama 3 - 100% Limitsiz Bepul)", "Google Gemini"],
-        index=0
-    )
-    
-    if "Groq" in ai_provider:
-        api_input = st.text_input(
-            "Groq API Kalit (gsk_...):",
-            value=groq_secret,
-            type="password",
-            help="console.groq.com saytidan 10 soniyada olingan bepul kalit"
-        )
-        st.markdown("👉 [Bepul Groq Kalit Olish](https://console.groq.com/keys)")
+    st.header("⚙️ Sozlamalar")
+    if active_groq_key:
+        st.success("✅ Server Groq AI kaliti faol. Barcha foydalanuvchilar bepul va limitsiz foydalanishi mumkin.")
     else:
-        api_input = st.text_input(
-            "Gemini API Kalit:",
-            value=gemini_secret,
-            type="password",
-            help="Google AI Studio kaliti"
-        )
-        st.markdown("👉 [Gemini Kalit Olish](https://aistudio.google.com/app/apikey)")
+        st.info("💡 Server kaliti topilmadi. O'zingiznikini kiriting:")
+        user_key = st.text_input("Groq API Kalit (gsk_...):", type="password")
+        if user_key.strip():
+            active_groq_key = user_key.strip()
+            
+    st.markdown("👉 [Bepul Groq Kalit Olish](https://console.groq.com/keys)")
 
-active_key = api_input.strip().strip("'\" \n\r\t")
-is_active = len(active_key) > 5
-
-status_badge = '<span style="display:inline-flex;align-items:center;gap:5px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;padding:3px 10px;border-radius:14px;font-size:0.72rem;font-weight:700;margin-left:8px;"><span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span> AI Faol</span>' if is_active else '<span style="display:inline-flex;align-items:center;gap:5px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;padding:3px 10px;border-radius:14px;font-size:0.72rem;font-weight:700;margin-left:8px;">Kalit Kiritilmagan</span>'
-
+# Top Navigation Bar with Author Badge in the Corner
 st.markdown(f"""
 <div class="top-nav">
     <div class="nav-brand">
         <div class="nav-logo">✨</div>
         <div>
             <div style="font-weight: 800; font-size: 1.15rem; color: #0f172a; display: flex; align-items: center;">
-                UZ SCIENCE AI {status_badge}
+                UZ SCIENCE AI
             </div>
-            <div style="font-size: 0.76rem; color: #64748b;">Magistrant va tadqiqotchilar uchun ilmiy tarjima platformasi</div>
+            <div style="font-size: 0.76rem; color: #64748b;">Magistrant va tadqiqotchilar uchun ilmiy platforma</div>
         </div>
+    </div>
+    <div class="badge-author">
+        <span>👨‍💻 Muallif:</span> <b>{AUTHOR_NAME}</b>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
+# Hero Section
 st.markdown("""
 <div class="hero-container">
     <div class="hero-title">Ilmiy maqolalarni <span class="hero-highlight">o‘zbek tiliga</span> tarjima qiling</div>
@@ -306,6 +317,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# Main Floating White Card
 st.markdown('<div class="main-card">', unsafe_allow_html=True)
 
 tab_upload, tab_paste = st.tabs(["📄 Fayl Yuklash (PDF/DOCX/PPTX)", "✍️ Matnni Qo‘yish (Paste)"])
@@ -408,7 +420,7 @@ with col_opt2:
 # PROMPTS
 SUMMARY_PROMPT = """
 Siz oliy toifali akademik ekspert va magistr ilmiy maslahatchisisiz.
-Quyidagi ilmiy maqola / hujjat matnini chuqur tahlil qilib, FAQAT quyidagi JSON formatida natija qaytaring (hech qanday qo'shimcha so'zsiz):
+Quyidagi ilmiy maqola / hujjat matnini chuqur tahlil qilib, FAQAT quyidagi JSON formatida natija qaytaring:
 {
   "research_summary": {
     "core_problem": "Maqolada ko'tarilgan asosiy ilmiy muammo nima?",
@@ -434,17 +446,16 @@ Vazifangiz: Quyidagi ilmiy maqola matnini akademik, tabiiy va ravon o‘zbek til
 Qoidalar:
 1. Hech qanday bo'limni qisqartirmang (Abstract, Intro, Methods, Results, Conclusion to'liq bo'lsin).
 2. Formulalar ($...$), kodlar, parametrlar va citationlarni ([1], [2]) o'zgartirmang.
-3. Oddiy toza matn yoki markdown formatida to'liq tarjimani qaytaring (JSON formatida emas, oddiy matn ko'rinishida).
+3. Oddiy toza matn yoki markdown formatida to'liq tarjimani qaytaring.
 """
 
-# TWO-PASS ROBUST EXECUTION (Zero JSON truncation error)
-def run_groq_pipeline(key, text):
+def execute_groq_pipeline(key, text):
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {key}"
     }
     
-    # 1. Active models check
+    # Check active models dynamically
     models = ["llama-3.1-8b-instant", "llama3-70b-8192", "mixtral-8x7b-32768"]
     try:
         r_mod = requests.get("https://api.groq.com/openai/v1/models", headers=headers, timeout=10)
@@ -457,8 +468,8 @@ def run_groq_pipeline(key, text):
 
     chosen_model = models[0]
 
-    # Pass 1: Structured Summary (Compact JSON, 100% fits within token limit)
-    p1_payload = {
+    # Pass 1: Concise JSON Summary
+    p1 = {
         "model": chosen_model,
         "messages": [
             {"role": "system", "content": SUMMARY_PROMPT},
@@ -468,15 +479,13 @@ def run_groq_pipeline(key, text):
         "max_tokens": 4096,
         "response_format": {"type": "json_object"}
     }
-    
-    r1 = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=p1_payload, timeout=60)
+    r1 = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=p1, timeout=60)
     if r1.status_code != 200:
         raise Exception(f"Groq xatosi HTTP {r1.status_code}: {r1.text}")
-    
     json_res = json.loads(r1.json()["choices"][0]["message"]["content"])
 
-    # Pass 2: Full Academic Translation (Pure text, max 8192 tokens, cannot break JSON validation)
-    p2_payload = {
+    # Pass 2: Full Academic Translation (Pure text, cannot break JSON validation)
+    p2 = {
         "model": chosen_model,
         "messages": [
             {"role": "system", "content": TRANSLATION_PROMPT},
@@ -485,8 +494,7 @@ def run_groq_pipeline(key, text):
         "temperature": 0.2,
         "max_tokens": 8000
     }
-    
-    r2 = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=p2_payload, timeout=90)
+    r2 = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=p2, timeout=90)
     if r2.status_code == 200:
         trans_res = r2.json()["choices"][0]["message"]["content"]
     else:
@@ -494,35 +502,12 @@ def run_groq_pipeline(key, text):
 
     return json_res, trans_res, f"Groq ({chosen_model})"
 
-def run_gemini_pipeline(key, text):
-    headers = {"Content-Type": "application/json"}
-    models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash"]
-    
-    # Combined payload for Gemini
-    payload = {
-        "contents": [{"parts": [{"text": SUMMARY_PROMPT + "\n\n" + TRANSLATION_PROMPT + "\n\nHujjat Matni:\n" + text[:28000]}]}],
-        "generationConfig": {"temperature": 0.2}
-    }
-    
-    for m in models:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={key}"
-        try:
-            r = requests.post(url, headers=headers, json=payload, timeout=60)
-            if r.status_code == 200:
-                raw_t = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-                clean_j = raw_t.replace("```json", "").replace("```", "").strip()
-                parsed = json.loads(clean_j)
-                return parsed, parsed.get("full_translation", ""), f"Gemini ({m})"
-        except Exception:
-            continue
-    raise Exception("Gemini orqali ulanish muvaffaqiyatsiz bo'ldi.")
-
 st.markdown("<br>", unsafe_allow_html=True)
 if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_width=True):
     if not extracted_text.strip():
         st.warning("⚠️ Iltimos, oldin fayl yuklang yoki matn kiriting.")
-    elif not active_key:
-        st.error("⚠️ Tizimda API kalit topilmadi. Iltimos, chap tarafdagi menyuga API kalitingizni kiriting.")
+    elif not active_groq_key:
+        st.error("⚠️ Tizimda API kalit topilmadi. Iltimos, chap tarafdagi menyuga Groq API kalitingizni kiriting.")
     else:
         with st.status("🔍 Ilmiy maqola tahlil qilinmoqda va o'zbekchalashtirilmoqda...", expanded=True) as status_box:
             st.write("📄 **1-bosqich:** Fayl matni va tuzilmasi o‘qildi...")
@@ -531,10 +516,7 @@ if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_widt
             st.write("🧠 **2-bosqich:** Chuqur ilmiy xulosa va muammo tahlili shakllantirilmoqda...")
             
             try:
-                if "Groq" in ai_provider:
-                    parsed_json, full_trans_text, used_model = run_groq_pipeline(active_key, extracted_text)
-                else:
-                    parsed_json, full_trans_text, used_model = run_gemini_pipeline(active_key, extracted_text)
+                parsed_json, full_trans_text, used_model = execute_groq_pipeline(active_groq_key, extracted_text)
 
                 st.write("📄 **3-bosqich:** To‘liq akademik tarjima va formulalar tekshirildi.")
                 st.write("📥 **4-bosqich:** PDF va Word eksport fayllari yaratildi.")
@@ -714,8 +696,9 @@ if "result_summary" in st.session_state:
         else:
             st.info("Terminlar ro‘yxati mavjud emas.")
 
-st.markdown("""
-<div class="footer-text">
-    © 2026 UZ SCIENCE AI — Magistrant va ilmiy izlanuvchilar uchun universal platforma.
+# Footer with Author Branding
+st.markdown(f"""
+<div class="footer-container">
+    © 2026 <b>UZ SCIENCE AI</b> — Yaratuvchi: <b>{AUTHOR_NAME}</b>. Magistrant va ilmiy izlanuvchilar uchun maxsus yaratilgan.
 </div>
 """, unsafe_allow_html=True)
