@@ -15,7 +15,7 @@ import time
 # 🔑 OLDINDAN BERILGAN ASOSIY API KALIT:
 # =====================================================================
 # Agar xohlasangiz, o'z kalitingizni shu qo'shtirnoq ichiga 1 marta yozib qo'yishingiz mumkin:
-BUILTIN_API_KEY = ""
+BUILTIN_API_KEY = "AQ.Ab8RN6KVnPiAYcsr7UWg08xzzY46xQGd_2n__vLXpKkQNt1XJA"
 
 # Agar yuqorida bo'sh bo'lsa, Streamlit Secrets yoki Environment dan avtomatik oladi:
 if not BUILTIN_API_KEY:
