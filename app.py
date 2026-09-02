@@ -1,6 +1,6 @@
 import streamlit as st
 import fitz  # PyMuPDF
-import google.generativeai as genai
+import requests
 from docx import Document
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
@@ -14,15 +14,13 @@ import time
 # =====================================================================
 # 🔑 OLDINDAN BERILGAN ASOSIY API KALIT:
 # =====================================================================
-# Agar xohlasangiz, o'z kalitingizni shu qo'shtirnoq ichiga 1 marta yozib qo'yishingiz mumkin:
 BUILTIN_API_KEY = "AQ.Ab8RN6KVnPiAYcsr7UWg08xzzY46xQGd_2n__vLXpKkQNt1XJA"
 
-# Agar yuqorida bo'sh bo'lsa, Streamlit Secrets yoki Environment dan avtomatik oladi:
 if not BUILTIN_API_KEY:
     if "GEMINI_API_KEY" in st.secrets:
-        BUILTIN_API_KEY = st.secrets["GEMINI_API_KEY"]
+        BUILTIN_API_KEY = str(st.secrets["GEMINI_API_KEY"]).strip().strip("'\"").strip()
     elif os.environ.get("GEMINI_API_KEY"):
-        BUILTIN_API_KEY = os.environ.get("GEMINI_API_KEY")
+        BUILTIN_API_KEY = str(os.environ.get("GEMINI_API_KEY")).strip().strip("'\"").strip()
 
 # =====================================================================
 # SAHIFA SOZLAMALARI VA ANIQ SKRINSHOTDAGI DIZAYN
@@ -34,7 +32,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom Exact-Match Tailwind/Clean CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
@@ -273,30 +270,27 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     buffer.seek(0)
     return buffer.getvalue()
 
-# Active API Key
-FINAL_API_KEY = BUILTIN_API_KEY.strip()
+# Active API Key Resolution
+FINAL_API_KEY = BUILTIN_API_KEY.strip().strip("'\"").strip()
 
-# Sidebar (Only for optional personal API key if needed)
+# Sidebar
 with st.sidebar:
     st.header("⚙️ Sozlamalar")
     user_key = st.text_input(
-        "Shaxsiy Gemini API Kalit (Ixtiyoriy):",
+        "Gemini API Kalit:",
         type="password",
-        help="Agar server kalitini almashtirmoqchi bo'lsangiz kiriting"
+        help="Google API kalitingizni kiriting"
     )
     if user_key.strip():
-        FINAL_API_KEY = user_key.strip()
+        FINAL_API_KEY = user_key.strip().strip("'\"").strip()
         
-    selected_model_choice = st.selectbox(
-        "Model Tanlovi:",
-        ["gemini-1.5-flash (Tavsiya etiladi - Barqaror)", "gemini-2.0-flash (Tezkor)"],
-        index=0
-    )
-    st.markdown("👉 [Yangi Bepul API Kalit Olish](https://aistudio.google.com/app/apikey)")
+    st.markdown("👉 [Bepul API Kalit Olish](https://aistudio.google.com/app/apikey)")
+
+# Check if Key is valid format
+is_key_valid = len(FINAL_API_KEY) > 8
+status_badge = '<span class="badge-active"><span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span> Gemini AI Faol</span>' if is_key_valid else '<span class="badge-active" style="background:#fffbeb; border-color:#fde68a; color:#b45309;">API Kalit kiritilmagan</span>'
 
 # Top Navigation Bar
-status_badge = '<span class="badge-active"><span style="width:6px; height:6px; border-radius:50%; background:#22c55e;"></span> Gemini AI Faol</span>' if FINAL_API_KEY else '<span class="badge-active" style="background:#fffbeb; border-color:#fde68a; color:#b45309;">API Kalit kiritilmagan</span>'
-
 st.markdown(f"""
 <div class="top-nav">
     <div class="nav-brand">
@@ -421,24 +415,9 @@ with col_opt2:
     </div>
     """, unsafe_allow_html=True)
 
-# Big Action Button
-st.markdown("<br>", unsafe_allow_html=True)
-if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_width=True):
-    if not extracted_text.strip():
-        st.warning("⚠️ Iltimos, oldin fayl yuklang yoki matn kiriting.")
-    elif not FINAL_API_KEY:
-        st.error("⚠️ Tizimda API kalit topilmadi. Iltimos, chap tarafdagi menyuga Gemini API kalitingizni kiriting yoki app.py ning 15-qatoriga yozib qo'ying.")
-    else:
-        # LIVE STEP-BY-STEP PROGRESS CONTAINER
-        with st.status("🔍 Ilmiy maqola tahlil qilinmoqda va o'zbekchalashtirilmoqda...", expanded=True) as status_box:
-            
-            st.write("📄 **1-bosqich:** Fayl matni va tuzilmasi o‘qildi...")
-            st.write(f"✓ Matn hajmi: {len(extracted_text):,} ta belgi.")
-            
-            chosen_model = "gemini-1.5-flash" if "1.5" in selected_model_choice else "gemini-2.0-flash"
-            st.write(f"🤖 **2-bosqich:** Google Gemini AI ({chosen_model}) modeliga ulanish o‘rnatilmoqda...")
-            
-            system_prompt = """
+# Direct Native REST API Call Function (Completely eliminates Bearer / OAuth 401 issues)
+def execute_gemini_rest(api_key, text):
+    system_prompt = """
 Siz oliy toifali akademik tarjimon, ilmiy tahrirchi va magistrlik dissertatsiyalari bo'yicha ilmiy maslahatchisisiz.
 Vazifangiz: Taqdim etilgan ilmiy maqola / akademik hujjatni quyidagi 4 ta asosiy bo'lim bo'yicha mukammal akademik o'zbek tilida tahlil qilib berish.
 
@@ -473,57 +452,93 @@ Javobni FAQAT quyidagi toza JSON formatida qaytaring (hech qanday markdown ```js
   ]
 }
 """
+    clean_key = str(api_key).strip().strip("'\"").strip()
+    
+    # Models to try sequentially
+    models_to_try = [
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-2.5-flash",
+        "gemini-3.6-flash"
+    ]
+    
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": clean_key  # Clean API Key header, NO Bearer!
+    }
+    
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": system_prompt + "\n\nHujjat Matni:\n" + text[:28000]}
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.2
+        }
+    }
+    
+    last_err_text = ""
+    for model_name in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={clean_key}"
+        try:
+            resp = requests.post(url, headers=headers, json=payload, timeout=60)
+            if resp.status_code == 200:
+                data = resp.json()
+                raw_text = data["candidates"][0]["content"]["parts"][0]["text"]
+                return raw_text, model_name
+            elif resp.status_code == 429:
+                last_err_text = "429: Kvota chegarasiga yetildi (Rate limit / Quota exceeded)."
+                continue
+            else:
+                last_err_text = f"HTTP {resp.status_code}: {resp.text}"
+        except Exception as e:
+            last_err_text = str(e)
+            continue
+            
+    raise Exception(last_err_text or "Barcha modellar bo'yicha ulanish muvaffaqiyatsiz bo'ldi.")
+
+# Big Action Button
+st.markdown("<br>", unsafe_allow_html=True)
+if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_width=True):
+    if not extracted_text.strip():
+        st.warning("⚠️ Iltimos, oldin fayl yuklang yoki matn kiriting.")
+    elif not FINAL_API_KEY:
+        st.error("⚠️ Tizimda API kalit topilmadi. Iltimos, chap tarafdagi menyuga Gemini API kalitingizni kiriting.")
+    else:
+        # LIVE STEP-BY-STEP CONTAINER
+        with st.status("🔍 Ilmiy maqola tahlil qilinmoqda va o'zbekchalashtirilmoqda...", expanded=True) as status_box:
+            
+            st.write("📄 **1-bosqich:** Fayl matni va tuzilmasi o‘qildi...")
+            st.write(f"✓ Matn hajmi: {len(extracted_text):,} ta belgi.")
+            
+            st.write("🤖 **2-bosqich:** Google Gemini REST API (x-goog-api-key) bilan to'g'ridan-to'g'ri bog'lanilmoqda...")
             st.write("🧠 **3-bosqich:** Ilmiy xulosa va to‘liq tarjima shakllantirilmoqda...")
             
-            genai.configure(api_key=FINAL_API_KEY)
-            
-            # Direct, clean call with automatic retry on brief 7s burst rate-limit
-            success = False
-            response = None
-            last_err = None
+            try:
+                raw_json, used_model = execute_gemini_rest(FINAL_API_KEY, extracted_text)
+                
+                clean_json = raw_json.strip()
+                if clean_json.startswith("```json"):
+                    clean_json = clean_json[7:-3].strip()
+                elif clean_json.startswith("```"):
+                    clean_json = clean_json[3:-3].strip()
 
-            for attempt in range(2):
-                try:
-                    model = genai.GenerativeModel(chosen_model)
-                    response = model.generate_content(
-                        system_prompt + "\n\nHujjat Matni:\n" + extracted_text[:28000],
-                        generation_config={"temperature": 0.2}
-                    )
-                    if response and response.text:
-                        success = True
-                        break
-                except Exception as e:
-                    last_err = e
-                    err_str = str(e)
-                    # If Google says 'Please retry in X seconds'
-                    if "429" in err_str and attempt == 0:
-                        st.write("⏳ Google API band, 8 soniya kutilmoqda va avtomatik qayta urinilmoqda...")
-                        time.sleep(8)
-                        continue
-                    else:
-                        break
-
-            if success and response and response.text:
-                raw_json = response.text.strip()
-                if raw_json.startswith("```json"):
-                    raw_json = raw_json[7:-3].strip()
-                elif raw_json.startswith("```"):
-                    raw_json = raw_json[3:-3].strip()
-
-                data = json.loads(raw_json)
+                data = json.loads(clean_json)
                 st.session_state["result_data"] = data
                 st.session_state["file_title"] = file_name
-                st.session_state["used_model"] = chosen_model
+                st.session_state["used_model"] = used_model
 
                 st.write("📄 **4-bosqich:** To‘liq akademik tarjima va ilmiy pasport tekshirildi.")
                 st.write("📥 **5-bosqich:** PDF va Word eksport fayllari yaratildi.")
-                status_box.update(label=f"✅ Tahlil va tarjima muvaffaqiyatli yakunlandi! ({chosen_model})", state="complete", expanded=False)
-                st.success(f"✨ Muvaffaqiyatli yakunlandi! (Foydalanilgan model: `{chosen_model}`)")
-            else:
+                status_box.update(label=f"✅ Tahlil va tarjima muvaffaqiyatli yakunlandi! ({used_model})", state="complete", expanded=False)
+                st.success(f"✨ Muvaffaqiyatli yakunlandi! (Foydalanilgan model: `{used_model}`)")
+                
+            except Exception as err:
                 status_box.update(label="❌ Tahlilda xatolik yuz berdi", state="error", expanded=True)
-                st.error(f"Xatolik: {last_err}")
-                if "429" in str(last_err):
-                    st.info("💡 Ushbu loyihadagi kunlik so'rovlar chegarasiga yetildi. Iltimos, [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) sahifasida **'Create API key in NEW project'** tugmasi orqali yangi kalit oling.")
+                st.error(f"Xatolik: {err}")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
