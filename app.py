@@ -7,7 +7,6 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import io
-import json
 import os
 import time
 
@@ -16,7 +15,7 @@ import time
 # =====================================================================
 AUTHOR_NAME = "Qosimjonov Hamidullo"
 
-# Streamlit Secrets-dan kalitni avtomatik olish
+# Streamlit Secrets-dan kalitni avtomatik olish (Fayl ichida kalit yozilmaydi)
 BUILTIN_GROQ_KEY = ""
 if "GROQ_API_KEY" in st.secrets:
     BUILTIN_GROQ_KEY = str(st.secrets["GROQ_API_KEY"]).strip().strip("'\" \n\r\t")
@@ -162,18 +161,9 @@ st.markdown("""
     .res-card h4 {
         color: #0f172a;
         margin-top: 0;
-        margin-bottom: 10px;
-        font-size: 1.05rem;
+        margin-bottom: 12px;
+        font-size: 1.1rem;
         font-weight: 700;
-    }
-    
-    .focus-banner {
-        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-        border: 1px solid #bfdbfe;
-        border-left: 6px solid #0284c7;
-        padding: 20px 24px;
-        border-radius: 14px;
-        margin-bottom: 20px;
     }
     
     .stTabs [data-baseweb="tab-list"] {
@@ -227,23 +217,23 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Helper function to generate PDF
-def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
+def create_pdf(title, translation_text, summary_text, thesis_text, terms_text):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
     styles = getSampleStyleSheet()
     
     title_style = ParagraphStyle('DocTitle', parent=styles['Heading1'], fontSize=15, leading=19, textColor=colors.HexColor('#0284c7'), spaceAfter=6)
-    h1_style = ParagraphStyle('H1', parent=styles['Heading2'], fontSize=11, leading=15, textColor=colors.HexColor('#0f172a'), spaceBefore=10, spaceAfter=5)
+    h1_style = ParagraphStyle('H1', parent=styles['Heading2'], fontSize=11, leading=15, textColor=colors.HexColor('#0f172a'), spaceBefore=12, spaceAfter=6)
     body_style = ParagraphStyle('Body', parent=styles['Normal'], fontSize=8.5, leading=12.5, textColor=colors.HexColor('#334155'), spaceAfter=4)
     
     story = []
     clean_title = str(title).replace('<', '&lt;').replace('>', '&gt;')
     story.append(Paragraph(f"<b>UZ SCIENCE AI — {clean_title}</b>", title_style))
-    story.append(Paragraph(f"<i>Muallif: {AUTHOR_NAME} · To‘liq akademik tarjima va ilmiy tahlil</i>", body_style))
+    story.append(Paragraph(f"<i>Muallif: {AUTHOR_NAME} · To‘liq akademik tarjima va ilmiy tahliliy pasport</i>", body_style))
     story.append(Spacer(1, 10))
     
-    # 1. BOSH O'RINDA: TO'LIQ AKADEMIK O'ZBEKCHA TARJIMA
-    story.append(Paragraph("<b>1. TO‘LIQ AKADEMIK O‘ZBEKCHA TARJIMA (ASOSIY QISM)</b>", h1_style))
+    # 1. BOSH O'RINDA: TO'LIQ AKADEMIK TARJIMA
+    story.append(Paragraph("<b>1. TO‘LIQ AKADEMIK O‘ZBEKCHA TARJIMA (ASOSIY MATN)</b>", h1_style))
     for p in translation_text.split('\n'):
         if p.strip():
             clean_p = p.replace('<', '&lt;').replace('>', '&gt;')
@@ -251,27 +241,30 @@ def create_pdf(title, translation_text, summary_data, thesis_data, terms_data):
     story.append(Spacer(1, 12))
     
     # 2. CHUQUR ILMIY XULOSA
-    story.append(Paragraph("<b>2. Chuqur Ilmiy Xulosa va Tahlil (Research Summary)</b>", h1_style))
-    for k, v in summary_data.items():
-        label = k.replace('_', ' ').capitalize()
-        story.append(Paragraph(f"<b>• {label}:</b> {str(v).replace('<', '&lt;').replace('>', '&gt;')}", body_style))
-    story.append(Spacer(1, 8))
-    
-    # 3. MAGISTR DISSERTATSIYASI YO'RIQNOMASI
-    story.append(Paragraph("<b>3. Magistrlik Dissertatsiyasi Uchun Tavsiyalar</b>", h1_style))
-    for k, v in thesis_data.items():
-        label = k.replace('_', ' ').capitalize()
-        story.append(Paragraph(f"<b>• {label}:</b> {str(v).replace('<', '&lt;').replace('>', '&gt;')}", body_style))
-    story.append(Spacer(1, 8))
+    if summary_text.strip():
+        story.append(Paragraph("<b>2. Chuqur Ilmiy Xulosa va Tahlil (Research Summary)</b>", h1_style))
+        for p in summary_text.split('\n'):
+            if p.strip():
+                clean_p = p.replace('<', '&lt;').replace('>', '&gt;')
+                story.append(Paragraph(clean_p, body_style))
+        story.append(Spacer(1, 10))
+        
+    # 3. MAGISTR TAVSIYALARI
+    if thesis_text.strip():
+        story.append(Paragraph("<b>3. Magistrlik Dissertatsiyasi Uchun Tavsiyalar</b>", h1_style))
+        for p in thesis_text.split('\n'):
+            if p.strip():
+                clean_p = p.replace('<', '&lt;').replace('>', '&gt;')
+                story.append(Paragraph(clean_p, body_style))
+        story.append(Spacer(1, 10))
 
     # 4. TERMINLAR
-    if terms_data:
-        story.append(Paragraph("<b>4. Asosiy Ilmiy Terminlar</b>", h1_style))
-        for item in terms_data:
-            term_en = item.get("term_en", "")
-            term_uz = item.get("term_uz", "")
-            desc = item.get("desc", "")
-            story.append(Paragraph(f"<b>• {term_en} → {term_uz}:</b> {desc}", body_style))
+    if terms_text.strip():
+        story.append(Paragraph("<b>4. Asosiy Ilmiy Terminlar Lug‘ati</b>", h1_style))
+        for p in terms_text.split('\n'):
+            if p.strip():
+                clean_p = p.replace('<', '&lt;').replace('>', '&gt;')
+                story.append(Paragraph(clean_p, body_style))
             
     doc.build(story)
     buffer.seek(0)
@@ -418,65 +411,65 @@ with col_opt2:
     </div>
     """, unsafe_allow_html=True)
 
-# Helper to split text into safe paragraphs/chunks without breaking sentences
-def split_into_safe_chunks(text, max_chunk_chars=6000):
-    paragraphs = text.split('\n')
-    chunks = []
-    curr = []
-    curr_len = 0
-    for p in paragraphs:
-        if curr_len + len(p) > max_chunk_chars and curr:
-            chunks.append("\n".join(curr))
-            curr = [p]
-            curr_len = len(p)
-        else:
-            curr.append(p)
-            curr_len += len(p) + 1
-    if curr:
-        chunks.append("\n".join(curr))
-    return chunks
+# Bulletproof Single Master Prompt (Natural Markdown, ZERO JSON restrictions, NEVER breaks)
+MASTER_PIPELINE_PROMPT = """
+Siz oliy toifali akademik tarjimon, ilmiy muharrir va magistrlik dissertatsiyalari bo'yicha yetakchi ilmiy maslahatchisisiz.
+Vazifangiz: Berilgan ilmiy maqolani to'liq tahlil qilib, quyidagi 4 TA BO'LIM BO'YICHA toza akademik o'zbek tilida mukammal natija berish.
 
-# PROMPTS
-ACADEMIC_TRANSLATE_SYSTEM = """
-Siz oliy toifali akademik tarjimonsiz. 
-Vazifangiz: Berilgan ilmiy maqola qismini mukammal, ravon va tabiiy akademik o‘zbek tiliga so‘zma-so‘z va to‘liq tarjima qilish.
+Har bir bo'limni aynan quyidagi sarlavhalar bilan boshlang:
 
-Qat'iy qoidalar:
-1. Hech qayerini qisqartirmang, hech qanday xulosa yoki o'z sharhingizni qo'shmang.
-2. Har bir jumla, fakt va dalil to'liq o'zbek tiliga o'girilsin.
-3. Formulalar ($...$), parametrlar, kodlar va iqtiboslarni ([1], [2]) o'zgartirmasdan asliday saqlang.
-4. FAQAT va FAQAT tarjima qilingan o'zbekcha matnni qaytaring.
+# 1. TO‘LIQ AKADEMIK O‘ZBEKCHA TARJIMA
+(Maqolaning barcha bo'limlarini — Abstract, Kirish, Metodologiya, Tajribalar, Natijalar, Xulosani hech qayerini qisqartirmasdan, formulalari ($...$) va iqtiboslari ([1], [2]) bilan so'zma-so'z, ravon akademik tilda to'liq tarjima qiling)
+
+# 2. CHUQUR ILMIY XULOSA (RESEARCH SUMMARY)
+- **⚡ Diqqat Markazi (Eng muhim qismi):** Ushbu maqolada magistrant nimasiga alohida e'tibor berishi kerak?
+- **🎯 1. Ko'tarilgan Asosiy Muammo:** Maqolada hal qilinmoqchi bo'lgan asosiy ilmiy yoki amaliy muammo nima?
+- **💡 2. Taklif Etilgan Yechim & Model:** Mualliflar qanday yangi arxitektura, model yoki algoritm taklif qilishdi?
+- **📊 3. Natijalar va Benchmarklar:** Qanday ko'rsatkichlarga erishildi?
+- **⏳ 4. Cheklovlar va Kamchiliklar:** Tadqiqotning qanday cheklovlari mavjud?
+
+# 3. MAGISTR DISSERTATSIYASI UCHUN TAVSIYALAR
+- **📌 Qayerda va qanday iqtibos (citation) olish kerak:** Dissertatsiyaning qaysi bo'limida qanday qo'llash lozim.
+- **🔬 Metodologiyani qo'llash:** O'z amaliy ishida qanday foydalanish mumkin.
+- **💡 Yangi ilmiy g'oya:** Ushbu maqoladan kelib chiqib magistr uchun yangi tadqiqot yo'nalishi.
+
+# 4. ASOSIY ILMIY TERMINLAR LUG‘ATI
+- **Termin (Inglizcha)** -> **O'zbekcha atama:** Qisqa tushunarli izoh.
 """
 
-SUMMARY_ANALYST_SYSTEM = """
-Siz oliy toifali akademik ekspert va magistr ilmiy maslahatchisisiz.
-Quyidagi ilmiy maqola bo'yicha chuqur ilmiy tahlil va dissertatsiya pasportini FAQAT quyidagi JSON formatida qaytaring:
-{
-  "research_summary": {
-    "core_problem": "Maqolada ko'tarilgan asosiy ilmiy muammo nima edi?",
-    "proposed_solution": "Mualliflar qanday yangi yechim, model yoki metodologiya taklif qilishdi?",
-    "key_focus_areas": "Nimasiga alohida e'tibor berish kerak va qaysi qismlari eng muhim?",
-    "experimental_results": "Asosiy tajribaviy natijalar va benchmarklar...",
-    "limitations": "Tadqiqot cheklovlari va kamchiliklari..."
-  },
-  "thesis_advisor": {
-    "where_to_cite": "Dissertatsiyaning qaysi bo'limida qanday iqtibos olish kerak...",
-    "how_to_use_method": "Ushbu metodni o'z tadqiqotida qanday qo'llash mumkin...",
-    "new_research_idea": "Ushbu maqola asosida magistr uchun yangi ilmiy g'oya..."
-  },
-  "key_terms": [
-    {"term_en": "Self-Attention", "term_uz": "O'z-o'ziga e'tibor mexanizmi", "desc": "Atama izohi..."}
-  ]
-}
-"""
+def parse_markdown_response(text):
+    sections = {
+        "translation": "",
+        "summary": "",
+        "thesis": "",
+        "terms": ""
+    }
+    
+    parts = text.split("# ")
+    for p in parts:
+        p_clean = p.strip()
+        if p_clean.startswith("1. TO‘LIQ") or "TO‘LIQ AKADEMIK" in p_clean[:40]:
+            sections["translation"] = p_clean.split("\n", 1)[1] if "\n" in p_clean else p_clean
+        elif p_clean.startswith("2. CHUQUR") or "CHUQUR ILMIY" in p_clean[:40]:
+            sections["summary"] = p_clean.split("\n", 1)[1] if "\n" in p_clean else p_clean
+        elif p_clean.startswith("3. MAGISTR") or "MAGISTR DISSERTATSIYASI" in p_clean[:40]:
+            sections["thesis"] = p_clean.split("\n", 1)[1] if "\n" in p_clean else p_clean
+        elif p_clean.startswith("4. ASOSIY") or "TERMINLAR" in p_clean[:40]:
+            sections["terms"] = p_clean.split("\n", 1)[1] if "\n" in p_clean else p_clean
+            
+    # If headers were not separated, whole text is the translation
+    if not sections["translation"]:
+        sections["translation"] = text
+        
+    return sections
 
-def execute_academic_pipeline(key, text, status_box):
+def execute_groq_master(key, text):
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {key}"
     }
     
-    # 1. Auto-discover active Groq model
+    # Auto-detect available Groq models
     active_model = "llama-3.1-8b-instant"
     try:
         r_mod = requests.get("https://api.groq.com/openai/v1/models", headers=headers, timeout=10)
@@ -490,71 +483,26 @@ def execute_academic_pipeline(key, text, status_box):
     except Exception:
         pass
 
-    # 2. CHUNK-BY-CHUNK TRANSLATION (Guarantees 100% full translation without token drop or rate-limit)
-    chunks = split_into_safe_chunks(text, max_chunk_chars=5500)
-    total_chunks = len(chunks)
-    
-    status_box.write(f"📄 **2-bosqich:** Maqola {total_chunks} ta ilmiy qismga ajratildi. To‘liq akademik tarjima boshlandi...")
-    
-    translated_parts = []
-    for idx, chunk in enumerate(chunks):
-        status_box.write(f"⏳ *Tarjima qilinmoqda: {idx+1}/{total_chunks}-qism...*")
-        payload = {
-            "model": active_model,
-            "messages": [
-                {"role": "system", "content": ACADEMIC_TRANSLATE_SYSTEM},
-                {"role": "user", "content": f"Quyidagi ilmiy qismni to'liq o'zbek tiliga tarjima qiling:\n\n{chunk}"}
-            ],
-            "temperature": 0.2,
-            "max_tokens": 2500
-        }
-        
-        # Safe retry if rate-limited
-        chunk_success = False
-        for attempt in range(2):
-            try:
-                r_chunk = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=60)
-                if r_chunk.status_code == 200:
-                    chunk_text = r_chunk.json()["choices"][0]["message"]["content"].strip()
-                    translated_parts.append(chunk_text)
-                    chunk_success = True
-                    break
-                elif r_chunk.status_code == 429:
-                    time.sleep(2.0)
-            except Exception:
-                time.sleep(1.0)
-                
-        if not chunk_success:
-            translated_parts.append(f"\n[Eslatma: {idx+1}-qismda qisqa tarmoq uzilishi bo'ldi]\n")
-
-    full_translation = "\n\n".join(translated_parts)
-    status_box.write("✅ **To‘liq akademik tarjima muvaffaqiyatli yakunlandi!**")
-
-    # 3. STRUCTURED RESEARCH SUMMARY & THESIS PASSPORT
-    status_box.write("🧠 **3-bosqich:** Chuqur ilmiy xulosa va dissertatsiya yo‘riqnomasi shakllantirilmoqda...")
-    summary_payload = {
+    # Single comprehensive payload without JSON constraints (Never breaks JSON)
+    payload = {
         "model": active_model,
         "messages": [
-            {"role": "system", "content": SUMMARY_ANALYST_SYSTEM},
-            {"role": "user", "content": f"Quyidagi ilmiy maqolani tahlil qilib, JSON formatida xulosa bering:\n\n{text[:18000]}"}
+            {"role": "system", "content": MASTER_PIPELINE_PROMPT},
+            {"role": "user", "content": f"Quyidagi ilmiy maqolani tahlil qiling va 4 ta bo'limda natija bering:\n\n{text[:25000]}"}
         ],
         "temperature": 0.2,
-        "max_tokens": 3000,
-        "response_format": {"type": "json_object"}
+        "max_tokens": 7500
     }
     
-    parsed_json = {}
-    try:
-        r_sum = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=summary_payload, timeout=60)
-        if r_sum.status_code == 200:
-            parsed_json = json.loads(r_sum.json()["choices"][0]["message"]["content"])
-    except Exception:
-        parsed_json = {
-            "research_summary": {"core_problem": "Tahlil yakunlandi.", "proposed_solution": "To'liq tarjima bo'limiga qarang."},
-            "thesis_advisor": {"where_to_cite": "Metodologiya bo'limi", "how_to_use_method": "Amaliy tadqiqotda qo'llash tavsiya etiladi."}
-        }
-
-    return full_translation, parsed_json, f"Groq ({active_model})"
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    r = requests.post(url, headers=headers, json=payload, timeout=90)
+    
+    if r.status_code == 200:
+        raw_text = r.json()["choices"][0]["message"]["content"]
+        sections = parse_markdown_response(raw_text)
+        return sections, f"Groq ({active_model})"
+    else:
+        raise Exception(f"Groq API javobi HTTP {r.status_code}: {r.text}")
 
 # Big Action Button
 st.markdown("<br>", unsafe_allow_html=True)
@@ -568,15 +516,15 @@ if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_widt
             st.write("📄 **1-bosqich:** Fayl matni va tuzilmasi o‘qildi...")
             st.write(f"✓ Matn hajmi: {len(extracted_text):,} ta belgi.")
             
+            st.write("🧠 **2-bosqich:** To‘liq akademik tarjima va ilmiy xulosa shakllantirilmoqda...")
+            
             try:
-                full_trans, parsed_json, used_model = execute_academic_pipeline(active_groq_key, extracted_text, status_box)
+                sections, used_model = execute_groq_master(active_groq_key, extracted_text)
 
-                st.write("📥 **4-bosqich:** PDF va Word eksport fayllari yaratildi.")
+                st.write("📄 **3-bosqich:** Formulalar, iqtiboslar va ilmiy pasport tekshirildi.")
+                st.write("📥 **4-bosqich:** Word (.docx) va PDF eksport fayllari yaratildi.")
 
-                st.session_state["result_translation"] = full_trans
-                st.session_state["result_summary"] = parsed_json.get("research_summary", {})
-                st.session_state["result_thesis"] = parsed_json.get("thesis_advisor", {})
-                st.session_state["result_terms"] = parsed_json.get("key_terms", [])
+                st.session_state["result_sections"] = sections
                 st.session_state["file_title"] = file_name
                 st.session_state["used_model"] = used_model
 
@@ -585,16 +533,17 @@ if st.button("🚀 TARJIMA VA TAHLIL QILISH", type="primary", use_container_widt
                 
             except Exception as err:
                 status_box.update(label="❌ Tahlilda xatolik yuz berdi", state="error", expanded=True)
-                st.error(f"Xatolik: {err}")
+                st.error(f"Xatolik tafsiloti: {err}")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
 # Results Section
-if "result_translation" in st.session_state:
-    full_trans = st.session_state["result_translation"]
-    summary = st.session_state.get("result_summary", {})
-    thesis = st.session_state.get("result_thesis", {})
-    terms = st.session_state.get("result_terms", [])
+if "result_sections" in st.session_state:
+    sec = st.session_state["result_sections"]
+    trans_text = sec.get("translation", "")
+    summary_text = sec.get("summary", "")
+    thesis_text = sec.get("thesis", "")
+    terms_text = sec.get("terms", "")
     current_title = st.session_state.get("file_title", "Ilmiy Maqola")
 
     st.markdown(f"""
@@ -615,22 +564,23 @@ if "result_translation" in st.session_state:
             doc.add_paragraph(f"Muallif: {AUTHOR_NAME} · To‘liq akademik tarjima va tahliliy hisobot")
             
             # 1. ASOSIY TO'LIQ AKADEMIK TARJIMA (BOSHIDA KELADI)
-            doc.add_heading("1. TO‘LIQ AKADEMIK O‘ZBEKCHA TARJIMA (ASOSIY QISM)", level=2)
-            doc.add_paragraph(full_trans)
+            doc.add_heading("1. TO‘LIQ AKADEMIK O‘ZBEKCHA TARJIMA (ASOSIY MATN)", level=2)
+            doc.add_paragraph(trans_text)
             
             # 2. CHUQUR ILMIY XULOSA
-            doc.add_heading("2. Chuqur Ilmiy Xulosa va Tahlil", level=2)
-            for k, v in summary.items():
-                p = doc.add_paragraph()
-                p.add_run(f"{k.replace('_', ' ').capitalize()}: ").bold = True
-                p.add_run(str(v))
+            if summary_text.strip():
+                doc.add_heading("2. Chuqur Ilmiy Xulosa va Tahlil", level=2)
+                doc.add_paragraph(summary_text)
                 
             # 3. MAGISTR DISSERTATSIYASI YO'RIQNOMASI
-            doc.add_heading("3. Magistr Dissertatsiyasi Uchun Tavsiyalar", level=2)
-            for k, v in thesis.items():
-                p = doc.add_paragraph()
-                p.add_run(f"{k.replace('_', ' ').capitalize()}: ").bold = True
-                p.add_run(str(v))
+            if thesis_text.strip():
+                doc.add_heading("3. Magistr Dissertatsiyasi Uchun Tavsiyalar", level=2)
+                doc.add_paragraph(thesis_text)
+
+            # 4. TERMINLAR
+            if terms_text.strip():
+                doc.add_heading("4. Asosiy Ilmiy Terminlar", level=2)
+                doc.add_paragraph(terms_text)
 
             docx_io = io.BytesIO()
             doc.save(docx_io)
@@ -648,7 +598,7 @@ if "result_translation" in st.session_state:
 
     with col_d2:
         try:
-            pdf_bytes = create_pdf(current_title, full_trans, summary, thesis, terms)
+            pdf_bytes = create_pdf(current_title, trans_text, summary_text, thesis_text, terms_text)
             st.download_button(
                 label="📥 To‘liq Ilmiy Hisobot (PDF) Yuklab Olish",
                 data=pdf_bytes,
@@ -660,7 +610,7 @@ if "result_translation" in st.session_state:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 4 Output Tabs - ASOSIY URG'U: 1-TAB TO'LIQ AKADEMIK TARJIMA BO'LDI!
+    # 4 Output Tabs - ASOSIY URG'U: 1-TAB TO'LIQ AKADEMIK TARJIMA
     res_tab1, res_tab2, res_tab3, res_tab4 = st.tabs([
         "📄 To‘liq Akademik Tarjima",
         "🧠 Chuqur Ilmiy Xulosa (Summary)",
@@ -674,91 +624,38 @@ if "result_translation" in st.session_state:
         <div class="res-card" style="border-left: 5px solid #0284c7;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                 <h4 style="margin: 0; color: #0369a1;">🇺🇿 Hech Qayeri Qisqartirilmagan To‘liq Akademik Tarjima</h4>
-                <span style="font-size: 0.78rem; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 8px; font-weight: 700;">{len(full_trans):,} ta belgi</span>
+                <span style="font-size: 0.78rem; background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 8px; font-weight: 700;">{len(trans_text):,} ta belgi</span>
             </div>
-            <div style="color: #0f172a; font-size: 0.95rem; line-height: 1.75; white-space: pre-wrap;">{full_trans}</div>
+            <div style="color: #0f172a; font-size: 0.95rem; line-height: 1.75; white-space: pre-wrap;">{trans_text}</div>
         </div>
         """, unsafe_allow_html=True)
 
     # 2-TAB: CHUQUR ILMIY XULOSA
     with res_tab2:
         st.markdown(f"""
-        <div class="focus-banner">
-            <div style="font-size: 0.78rem; font-weight: 800; text-transform: uppercase; color: #0284c7; letter-spacing: 0.5px; margin-bottom: 4px;">⚡ DIQQAT MARKAZI • ENG MUHIM QISM</div>
-            <h4 style="color: #0c4a6e; margin: 0 0 6px 0; font-size: 1.1rem; font-weight: 800;">Ushbu maqolada nimasiga alohida e’tibor berish kerak?</h4>
-            <p style="color: #1e293b; font-size: 0.94rem; margin: 0; line-height: 1.6;">{summary.get('key_focus_areas', '-')}</p>
+        <div class="res-card">
+            <h4>🧠 Chuqur Ilmiy Xulosa va Tahlil</h4>
+            <div style="color: #1e293b; font-size: 0.94rem; line-height: 1.65; white-space: pre-wrap;">{summary_text}</div>
         </div>
         """, unsafe_allow_html=True)
-
-        col_s1, col_s2 = st.columns(2)
-        with col_s1:
-            st.markdown(f"""
-            <div class="res-card">
-                <h4>🎯 1. Ko‘tarilgan Asosiy Muammo</h4>
-                <p style="color: #334155; font-size: 0.9rem; line-height: 1.55; margin: 0;">{summary.get('core_problem', '-')}</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown(f"""
-            <div class="res-card">
-                <h4>📊 3. Natijalar va Benchmarklar</h4>
-                <p style="color: #334155; font-size: 0.9rem; line-height: 1.55; margin: 0;">{summary.get('experimental_results', '-')}</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        with col_s2:
-            st.markdown(f"""
-            <div class="res-card">
-                <h4>💡 2. Taklif Etilgan Yechim & Metod</h4>
-                <p style="color: #334155; font-size: 0.9rem; line-height: 1.55; margin: 0;">{summary.get('proposed_solution', '-')}</p>
-            </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown(f"""
-            <div class="res-card">
-                <h4>⏳ 4. Cheklovlar va Kamchiliklar</h4>
-                <p style="color: #334155; font-size: 0.9rem; line-height: 1.55; margin: 0;">{summary.get('limitations', '-')}</p>
-            </div>
-            """, unsafe_allow_html=True)
 
     # 3-TAB: MAGISTR TAVSIYALARI
     with res_tab3:
         st.markdown(f"""
         <div class="res-card">
-            <h4>📌 Qayerda va qanday iqtibos (citation) olish kerak?</h4>
-            <p style="color: #334155; font-size: 0.92rem; line-height: 1.6; margin: 0;">{thesis.get('where_to_cite', '-')}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown(f"""
-        <div class="res-card">
-            <h4>🔬 Metodologiyani o‘z tadqiqotingizda qanday qo‘llash mumkin?</h4>
-            <p style="color: #334155; font-size: 0.92rem; line-height: 1.6; margin: 0;">{thesis.get('how_to_use_method', '-')}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown(f"""
-        <div class="res-card" style="background: #fffbeb; border-color: #fde68a; border-left: 5px solid #f59e0b;">
-            <h4 style="color: #92400e;">💡 Ushbu maqola asosida yangi dissertatsiya / maqola g‘oyasi:</h4>
-            <p style="color: #78350f; font-size: 0.92rem; line-height: 1.6; font-weight: 500; margin: 0;">{thesis.get('new_research_idea', '-')}</p>
+            <h4>🎓 Magistrlik Dissertatsiyasi Uchun Yo‘riqnoma</h4>
+            <div style="color: #334155; font-size: 0.94rem; line-height: 1.65; white-space: pre-wrap;">{thesis_text}</div>
         </div>
         """, unsafe_allow_html=True)
 
     # 4-TAB: LUG'AT
     with res_tab4:
-        if terms:
-            for item in terms:
-                st.markdown(f"""
-                <div class="res-card" style="padding: 14px 18px; margin-bottom: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <span style="font-weight: 800; color: #0284c7; font-size: 0.95rem;">{item.get('term_en', '')}</span>
-                        <span style="font-weight: 700; color: #0f172a; font-size: 0.84rem; background: #e0f2fe; padding: 2px 8px; border-radius: 6px;">🇺🇿 {item.get('term_uz', '')}</span>
-                    </div>
-                    <p style="margin: 0; font-size: 0.86rem; color: #475569; line-height: 1.45;">{item.get('desc', '')}</p>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.info("Terminlar ro‘yxati mavjud emas.")
+        st.markdown(f"""
+        <div class="res-card">
+            <h4>📖 Asosiy Ilmiy Terminlar Glossariysi</h4>
+            <div style="color: #475569; font-size: 0.92rem; line-height: 1.6; white-space: pre-wrap;">{terms_text}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # Footer with Author Branding
 st.markdown(f"""
